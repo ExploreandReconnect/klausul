@@ -352,7 +352,46 @@ legend{font-size:13px;letter-spacing:.14em;text-transform:uppercase;font-weight:
 .working .steps span{display:block}
 .working .steps span.on{color:var(--ink);font-weight:600}
 .working .steps span.done{color:var(--returned)}
-.bar{height:3px;background:var(--rule);margin-top:16px;max-width:360px;overflow:hidden}
+
+/* ── the wait ──────────────────────────────────────────────────────────────
+   90 seconds is a long time to show someone a list of verbs. The IPID is the
+   thing the model is actually hunting through, so the wait draws it. */
+.wait .docs{display:flex;flex-wrap:wrap;gap:8px 22px;margin:20px 0 22px;
+  font-size:13px;color:var(--ink-3)}
+.wait .docs b{color:var(--ink);font-weight:600}
+.wait .docs .r{display:block;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--ink-3);margin-bottom:2px}
+.ipid{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:430px}
+@media (max-width:560px){.ipid{grid-template-columns:1fr;max-width:230px}.ipid .pg2{display:none}}
+.ipid .pg{background:#fff;border:1px solid var(--rule);padding:15px 14px;
+  box-shadow:0 1px 0 rgba(0,0,0,.04);position:relative;overflow:hidden}
+/* A reading line, not a progress bar. It says "this is being read right now", which is
+   true, without claiming to know how far along it is — which would not be. */
+.ipid .pg::after{content:'';position:absolute;left:0;right:0;height:64px;top:-70px;
+  background:linear-gradient(180deg,transparent,rgba(15,61,50,.05) 40%,
+    rgba(15,61,50,.13) 50%,rgba(15,61,50,.05) 60%,transparent);
+  animation:scan 3.4s cubic-bezier(.45,0,.55,1) infinite}
+.ipid .pg2::after{animation-delay:1.7s}
+@keyframes scan{0%{top:-70px}100%{top:100%}}
+@media (prefers-reduced-motion:reduce){.ipid .pg::after{display:none}}
+.ipid .hd{display:block;height:7px;width:52%;background:var(--pine);margin-bottom:5px}
+.ipid .hd2{display:block;height:3px;width:74%;background:#dcd8d1;margin-bottom:14px}
+.ipid .sec{margin-bottom:11px}
+.ipid .sec i{display:block;border-radius:1px}
+.ipid .sec .ttl{height:4px;width:60%;background:#c8c4bd;margin-bottom:5px;
+  transition:background .45s ease, width .45s ease}
+.ipid .sec .ln{height:3px;background:#eae7e1;margin-bottom:3.5px;transition:background .45s ease}
+.ipid .sec.done .ttl{background:#9db3ab}
+.ipid .sec.on .ttl{background:var(--pine);width:78%}
+.ipid .sec.on .ln{background:#c3d5cd}
+.wait .cap3{margin-top:22px;font-size:15px;color:var(--ink-2);line-height:1.5;max-width:44ch}
+.wait .cap3 b{color:var(--ink);font-weight:600;display:block}
+.wait .cap4{margin-top:12px;font-size:13px;color:var(--ink-3);line-height:1.55;max-width:46ch}
+.wait .cap4 span{color:var(--ink-2);font-variant-numeric:tabular-nums}
+
+/* Blanks collected below the chart rather than scattered through it. */
+.blanks{margin-bottom:26px}
+.bar{display:block;height:3px;background:var(--rule);margin-top:18px;max-width:360px;overflow:hidden}
 .bar i{display:block;height:100%;width:30%;background:var(--pine);
   animation:slide 1.5s cubic-bezier(.4,0,.6,1) infinite}
 @keyframes slide{0%{transform:translateX(-110%)}100%{transform:translateX(370%)}}
@@ -527,11 +566,41 @@ legend{font-size:13px;letter-spacing:.14em;text-transform:uppercase;font-weight:
     </div>
 
     <div id="working" hidden>
-      <p class="working"><b>Reading your documents.</b> Extraction is the slow part —
-        the model reads every page and must quote its source for each field.
-        <span class="steps"></span>
-        <span class="bar"><i></i></span>
-      </p>
+      <div class="wait">
+        <p class="working"><b>Reading your documents.</b> Extraction is the slow part —
+          the model reads every page and must quote its source for every field it returns.
+          <span class="bar"><i></i></span>
+        </p>
+
+        <div class="docs" id="w-docs"></div>
+
+        <!-- The IPID itself, drawn. Not a progress bar: the highlight walks the nine
+             sections Commission Implementing Regulation (EU) 2017/1469 fixes, which is
+             what the model is looking for. Labelled as the structure, not as a trace,
+             because a fake progress animation would be the one dishonest thing on a
+             page whose entire argument is that you can see where everything came from. -->
+        <div class="ipid" aria-hidden="true">
+          <div class="pg">
+            <div class="hd"></div><div class="hd2"></div>
+            <div class="sec" data-s="0"><i class="ttl"></i><i class="ln"></i></div>
+            <div class="sec" data-s="1"><i class="ttl"></i><i class="ln"></i><i class="ln"></i><i class="ln"></i></div>
+            <div class="sec" data-s="2"><i class="ttl"></i><i class="ln"></i><i class="ln"></i></div>
+            <div class="sec" data-s="3"><i class="ttl"></i><i class="ln"></i><i class="ln"></i></div>
+          </div>
+          <div class="pg pg2">
+            <div class="sec" data-s="4"><i class="ttl"></i><i class="ln"></i></div>
+            <div class="sec" data-s="5"><i class="ttl"></i><i class="ln"></i><i class="ln"></i></div>
+            <div class="sec" data-s="6"><i class="ttl"></i><i class="ln"></i></div>
+            <div class="sec" data-s="7"><i class="ttl"></i><i class="ln"></i></div>
+            <div class="sec" data-s="8"><i class="ttl"></i><i class="ln"></i></div>
+          </div>
+        </div>
+
+        <p class="cap3"><b id="w-sec">What is this type of insurance?</b>
+          <span id="w-note">one of the nine sections every EU insurance product document must contain</span></p>
+        <p class="cap4">The container is fixed across the EU. The language, the wording and the
+          numbers are not — which is the part that needs a model. <span id="w-el"></span></p>
+      </div>
     </div>
   </section>
 
@@ -944,12 +1013,21 @@ function fail(msg){
   el.innerHTML = msg;
 }
 
-const STEPS = ['Reading both documents',
-               'Extracting fields with a quote and a page number',
-               'Checking the schema and the evidence',
-               'Comparing — in code, with no model',
-               'Weighing against your circumstances',
-               'Explaining each confirmed difference'];
+/* The nine sections Commission Implementing Regulation (EU) 2017/1469 fixes for every
+   IPID in the Union. The order is the regulation's; a real document does not always
+   follow it, which is exactly why extraction matches sections by meaning, never by
+   position — the Aviva Ireland IPID in our corpus has eight, in a different order. */
+const IPID_SECTIONS = [
+  ['What is this type of insurance?', 'the product, in one line'],
+  ['What is insured?',               'every peril and benefit the policy carries'],
+  ['What is not insured?',           'the exclusions — stated, not inferred'],
+  ['Are there any restrictions on cover?', 'where the excesses live'],
+  ['Where am I covered?',            'territory, and any limit on time spent abroad'],
+  ['What are my obligations?',       'what you must do to keep the cover'],
+  ['When and how do I pay?',         'premium, instalments, taxes'],
+  ['When does the cover start and end?', 'duration'],
+  ['How do I cancel the contract?',  'notice period and route'],
+];
 
 async function run(){
   if (!API){ fail('No analysis service is configured for this page.'); return; }
@@ -957,18 +1035,37 @@ async function run(){
   document.getElementById('form').hidden = true;
   const w = document.getElementById('working');
   w.hidden = false;
-  w.querySelector('.steps').innerHTML = STEPS.map((s,i) =>
-    `<span id="st${i}">${esc(s)}</span>`).join('');
 
-  let step = 0;
-  const tick = setInterval(() => {
-    const el = document.getElementById('st' + step);
-    if (el){ el.classList.remove('on'); el.classList.add('done'); }
-    step = Math.min(step + 1, STEPS.length - 1);
-    const nx = document.getElementById('st' + step);
-    if (nx) nx.classList.add('on');
-  }, 3500);
-  document.getElementById('st0').classList.add('on');
+  /* The real documents, named. The header used to keep showing the worked example's
+     insurers here, which read as a result before any result existed. */
+  document.getElementById('w-docs').innerHTML =
+    `<div><span class="r">${MODE === 'a' ? 'Last year' : 'Your policy now'}</span>
+       <b>${esc(FILES.current.name)}</b></div>
+     <div><span class="r">${MODE === 'a' ? 'The renewal' : 'The offer'}</span>
+       <b>${esc(FILES.other.name)}</b></div>
+     <div><span class="r">Number convention</span>
+       <b>${esc(MARKETS[PROFILE._market] || PROFILE._market)}</b></div>`;
+  document.getElementById('meta').innerHTML =
+    `${esc(FILES.current.name)} · ${esc(FILES.other.name)}<br>
+     Reading now · ${esc(MARKETS[PROFILE._market] || PROFILE._market)} · Nemotron on Nebius Token Factory`;
+
+  const secs = w.querySelectorAll('.ipid .sec');
+  let s = 0;
+  const mark = () => {
+    secs.forEach((el,i) => el.classList.toggle('done', i < s));
+    secs.forEach((el,i) => el.classList.toggle('on', i === s));
+    document.getElementById('w-sec').textContent = IPID_SECTIONS[s][0];
+    document.getElementById('w-note').textContent = IPID_SECTIONS[s][1];
+  };
+  mark();
+  const tick = setInterval(() => { s = (s + 1) % IPID_SECTIONS.length; mark(); }, 2600);
+
+  const t0 = Date.now();
+  const clock = setInterval(() => {
+    document.getElementById('w-el').textContent =
+      `${((Date.now() - t0)/1000).toFixed(0)}s elapsed.`;
+  }, 200);
+  const stop = () => { clearInterval(tick); clearInterval(clock); };
 
   const fd = new FormData();
   fd.append('current', FILES.current);
@@ -983,7 +1080,7 @@ async function run(){
   try {
     const r = await fetch(API + '/compare', {method:'POST', body:fd,
                                              signal: AbortSignal.timeout(180000)});
-    clearInterval(tick);
+    stop();
     if (!r.ok){
       let detail = `The service answered ${r.status}.`;
       try { const j = await r.json(); if (j.detail) detail = esc(j.detail); } catch {}
@@ -993,7 +1090,7 @@ async function run(){
     SOURCE = 'live';
     show('result'); paint();
   } catch (e){
-    clearInterval(tick);
+    stop();
     w.hidden = true;
     document.getElementById('form').hidden = false;
     document.getElementById('go').disabled = false;
@@ -1027,8 +1124,17 @@ const SCENARIO = {
   premium:             ['What they charge', 'Annual premium'],
 };
 const UNRESOLVED = ['missing_a','missing_b','missing_both','uncertain'];
-const niceMax = v => { const t=[400,800,1000,1500,2000,3000,5000,10000];
-  return t.find(x => x >= v*1.25) || Math.ceil(v*1.25/1000)*1000; };
+/* A round ceiling at any magnitude. The old version held a fixed ladder up to 10,000,
+   which was fine while every bar was an excess; a €150,000 legal limit fell off the end
+   of it and produced an axis reading €47,000 · €94,000 · €141,000. Liability limits run
+   to eight figures, so the ceiling has to be found rather than looked up. */
+const niceMax = v => {
+  if (!Number.isFinite(v) || v <= 0) return 400;
+  const target = v * 1.15;                        // headroom, so the longest bar isn't flush
+  const mag = Math.pow(10, Math.floor(Math.log10(target)));
+  for (const m of [1, 2, 4, 5, 8, 10]) if (mag * m >= target) return mag * m;
+  return mag * 10;
+};
 
 function q(f, yr){
   return {yr, t: f.source_text || '', doc: f.source_document || '', pg: f.source_page ? 'p. ' + f.source_page : '',
@@ -1041,11 +1147,20 @@ function buildLive(res){
   const money = [], time = [];
   let geo = null, premium = null, hole = null;
 
-  const amounts = res.differences
-    .filter(d => d.unit === 'EUR' && d.key.startsWith('excess'))
+  /* Two quantities, two scales. An excess is what YOU carry and lower is better; a
+     limit is what THEY carry and higher is better. Drawing both against one axis put
+     a €150,000 legal limit on a scale built for €800 excesses — it ran off the page,
+     and worse, it inverted the meaning: a long bar read as "bad" in one group and
+     "good" in the other. The boundary device only works if each side keeps its own
+     ruler. */
+  const span = pred => niceMax(Math.max(1, ...res.differences.filter(pred)
     .flatMap(d => [Number(d.current.value), Number(d.other.value)])
-    .filter(n => Number.isFinite(n));
-  const MAXE = niceMax(Math.max(400, ...amounts));
+    .filter(n => Number.isFinite(n))));
+  const isLimit  = d => d.key.startsWith('limit');
+  const isExcess = d => d.unit === 'EUR' && d.key.startsWith('excess');
+  const MAXE = Math.max(400, span(isExcess));
+  const MAXL = span(d => d.unit === 'EUR' && isLimit(d));
+  const limits = [];
 
   for (const d of res.differences){
     const [when, field] = SCENARIO[d.key] || [d.label, d.label];
@@ -1070,6 +1185,7 @@ function buildLive(res){
     if (!Number.isFinite(was) || !Number.isFinite(now)) continue;
     if (d.unit === 'days') time.push({...base, unit:'DAY', max: Math.max(30, was, now),
                                       theirsFirst:true, theirsNow: now});
+    else if (isLimit(d)) limits.push({...base, was, now, max: MAXL, theirs:true});
     else money.push({...base, was, now, max: MAXE});
   }
 
@@ -1097,7 +1213,9 @@ function buildLive(res){
     because: (res.uncertainties || []).length
       ? `<b>${esc(res.uncertainties[0])}</b>`
       : 'Ordered by what your circumstances make most relevant. The figures do not move — only their order does.',
-    money, time, geo,
+    money, limits, time, geo,
+    limitsTitle:'What they carry',
+    limitsSub:'The other side of the same line: the most the insurer pays. Its own scale, because a bigger bar here is in your favour.',
     holeTitle:'The one we could not draw',
     holeSub: hole ? 'This is the finding, not a gap in it.' : 'Nothing was left unresolved.',
     holeH3: hole ? hole.row.field : '',
@@ -1132,8 +1250,17 @@ function paint(){
   document.getElementById('tab-a').setAttribute('aria-selected', String(MODE === 'a'));
   document.getElementById('tab-b').setAttribute('aria-selected', String(MODE === 'b'));
 
+  /* Drawable rows stay together; the ones with nothing to draw are collected below
+     rather than interleaved. Scattering a dashed "cannot be drawn" between two real
+     bars breaks the reading of both — the eye can't compare across a hole. They are
+     NOT dropped: an absence is still a finding, it just belongs in its own section
+     with the evidence attached, not fragmenting the chart. Relevance order is
+     preserved inside each group. */
+  const drawable = (p.money || []).filter(r => r.unit !== 'NONE');
+  const blanks   = (p.money || []).filter(r => r.unit === 'NONE');
   const t = tableRows(p, {money: p.money, time: p.time, geo: p.geo});
-  const EUR_T = axisTicks(p.money);
+  const EUR_T = axisTicks(drawable);
+  const LIM_T = axisTicks(p.limits);
 
   document.getElementById('result').innerHTML = `
     <div class="eyebrow">${esc(p.eyebrow)}</div>
@@ -1142,11 +1269,16 @@ function paint(){
 
     <h2>What you carry</h2>
     <p class="h2sub">${esc(p.sub)}</p>
-    ${p.money && p.money.length ? axis(EUR_T) + p.money.map(r => rowHtml(r, p)).join('') : ''}
+    ${drawable.length ? axis(EUR_T) + drawable.map(r => rowHtml(r, p)).join('') : ''}
     ${p.time && p.time.length
       ? axis(dayTicks(p.time)).replace('class="axis"','class="axis" style="margin-top:34px"')
         + p.time.map(r => rowHtml(r, p)).join('') : ''}
     ${p.geo ? `<div style="margin-top:34px"></div>` + rowHtml(p.geo, p) : ''}
+
+    ${(p.limits || []).length ? `
+      <h2>${esc(p.limitsTitle || 'What they carry')}</h2>
+      <p class="h2sub">${esc(p.limitsSub || '')}</p>
+      ${axis(LIM_T) + p.limits.map(r => rowHtml(r, p)).join('')}` : ''}
 
     <div class="key">
       <div><i class="k-mine"></i> Yours</div>
@@ -1168,8 +1300,9 @@ function paint(){
     <p class="because">${p.because}</p>
 
     ${p.hasHole ? `
-      <h2>${esc(p.holeTitle)}</h2>
+      <h2>${blanks.length > 1 ? `${blanks.length} things nobody can confirm` : esc(p.holeTitle)}</h2>
       <p class="h2sub">${esc(p.holeSub)}</p>
+      ${blanks.length > 1 ? `<div class="blanks">${blanks.map(r => rowHtml(r, p)).join('')}</div>` : ''}
       <div class="hole">
         <div class="t">Cannot be established</div>
         <h3>${esc(p.holeH3)}</h3>
@@ -1188,12 +1321,15 @@ function paint(){
     <div class="price"><span class="l">${p.priceL}</span><span class="n">${p.priceN}</span></div>
     ${p.catch ? `<p class="catch">${p.catch}</p>` : ''}
 
+    <h2>${esc(p.qTitle)}</h2>
+    <p class="h2sub">${esc(p.qSub)}</p>
     ${(p.questions || []).length ? `
-      <h2>${esc(p.qTitle)}</h2>
-      <p class="h2sub">${esc(p.qSub)}</p>
       <ol class="q2">${p.questions.map(([qq,w]) =>
         `<li><span class="qq">${esc(qq)}</span><span class="why">${esc(w)}</span></li>`).join('')}</ol>
-      <a class="cta" href="#">${esc(p.cta)}</a>` : ''}
+      <a class="cta" href="#">${esc(p.cta)}</a>`
+    : `<p class="because">${blanks.length
+        ? 'The question list could not be generated on this run. The unresolved fields above are the questions — each one names a thing your documents do not settle.'
+        : 'Nothing was left unresolved, so there is nothing to ask.'}</p>`}
 
     ${SOURCE === 'live' ? `<p class="because" style="margin-top:30px">
       <b>This ran on your documents.</b> ${esc(p.stats.total_s)} seconds —
