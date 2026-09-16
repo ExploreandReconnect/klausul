@@ -1,0 +1,29 @@
+# The API. The page itself is on GitHub Pages and needs no server.
+#
+#   1. Push this repo to GitHub
+#   2. render.com -> New -> Blueprint -> point at the repo
+#   3. Paste NEBIUS_API_KEY in the dashboard (sync:false means Render asks for it,
+#      so the key never lands in the repo)
+#
+# The free plan sleeps after inactivity. That is fine here: the page renders in
+# full on cached data, and the API is only woken when someone uploads their own
+# documents — a person who is already expecting to wait for a model.
+services:
+  - type: web
+    name: klausul-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: frankfurt                 # EU documents, EU region
+    healthCheckPath: /health
+    envVars:
+      - key: NEBIUS_API_KEY
+        sync: false
+      - key: NEBIUS_BASE_URL
+        value: https://api.tokenfactory.nebius.com/v1
+      - key: KLAUSUL_MODEL_EXTRACT
+        value: nvidia/nemotron-3-super-120b-a12b
+      - key: KLAUSUL_MODEL_EXPLAIN
+        value: nvidia/nemotron-3-nano-30b-a3b
+      - key: KLAUSUL_ALLOWED_ORIGINS
+        value: "*"                    # tighten to your Pages URL once you have it

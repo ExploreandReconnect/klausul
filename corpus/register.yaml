@@ -1,0 +1,265 @@
+meta:
+  target_per_market: 10
+  markets:
+  - DK
+  - DE
+  - IE
+  probe_baseline: 2026-09-15
+  note: 'Phase 1 markets chosen so no two test the same failure mode: DK is non-euro
+    with comma decimals, DE is comma decimals in euro with the SF-Klassen bonus system,
+    IE is English with POINT decimals in euro. FR and NL are the planned phase-2 extension
+    and are carried here unprobed.
+
+    '
+sources:
+- id: ie-aviva-motorcare
+  market: IE
+  insurer: Aviva Insurance Ireland DAC
+  product: MotorCare
+  doc_type: ipid
+  language: en
+  url: https://static.aviva.io/content/dam/aviva-public/ie/pdfs/motorcare-ipid.pdf
+  route: open
+  probed: 2026-09-15
+  findings:
+  - EIGHT sections, not nine. "What is this type of insurance?" absent.
+  - Order deviates from the Annex: restrictions AFTER territory; cancel BEFORE start/end.
+  - Standard excess EUR 300; conditional additional excess EUR 2,500 for undisclosed
+    penalty points.
+  - Territory is a LIST plus a time-limited extension ("identical cover in the EU
+    for up to 31 days").
+  - Courtesy car is conditional on using the insurer's own repair network.
+- id: ie-axa
+  market: IE
+  insurer: AXA Insurance dac
+  product: Private motor
+  doc_type: ipid
+  language: en
+  route: probe_needed
+- id: ie-liberty
+  market: IE
+  insurer: Liberty Insurance
+  product: Private motor
+  doc_type: ipid
+  language: en
+  route: probe_needed
+- id: ie-fbd
+  market: IE
+  insurer: FBD Insurance
+  product: Private motor
+  doc_type: ipid
+  language: en
+  route: probe_needed
+- id: ie-allianz
+  market: IE
+  insurer: Allianz p.l.c.
+  product: Private motor
+  doc_type: ipid
+  language: en
+  route: probe_needed
+- id: ie-rsa
+  market: IE
+  insurer: RSA Insurance Ireland / 123.ie
+  product: Private motor
+  doc_type: ipid
+  language: en
+  route: probe_needed
+- id: ie-zurich
+  market: IE
+  insurer: Zurich Insurance plc
+  product: Private motor
+  doc_type: ipid
+  language: en
+  route: probe_needed
+- id: ie-avivadirect
+  market: IE
+  insurer: Aviva Direct Ireland
+  product: Private motor (second product line)
+  doc_type: ipid
+  language: en
+  route: probe_needed
+- id: ie-itsfour
+  market: IE
+  insurer: Its4women
+  product: Private motor
+  doc_type: ipid
+  language: en
+  route: probe_needed
+- id: ie-chill
+  market: IE
+  insurer: Chill Insurance (broker panel)
+  product: Private motor
+  doc_type: ipid
+  language: en
+  route: probe_needed
+  note: Broker — the IPID belongs to the underwriter. Record the underwriter on probe.
+- id: de-wwk
+  market: DE
+  insurer: WWK Versicherungen
+  product: Kfz-Versicherung
+  doc_type: ipid_in_bedingungen
+  language: de
+  url: https://www.wwk.de/medien/dokumente/bedingungen/kfz-versicherung_bedingungen.pdf
+  route: probe_needed
+  probed: 2026-09-15
+  note: 'Search surfaced this as a direct insurer-domain PDF containing an IPID ("1_KFZ_IPID_...").
+    Not yet opened — confirm the IPID is inside and record its page range before marking
+    open.
+
+    '
+- id: de-mecklenburgische
+  market: DE
+  insurer: Mecklenburgische Versicherung
+  product: Kfz-Versicherung
+  doc_type: vertragsinformationen
+  language: de
+  url: https://www.mecklenburgische.de/pdfs/produkte/vertragsinformationen/kfz-versicherung_vertragsinformationen.pdf
+  route: probe_needed
+  probed: 2026-09-15
+  note: Insurer-domain PDF of contract information. Confirm an IPID section exists.
+- id: de-huk
+  market: DE
+  insurer: HUK-COBURG
+  product: Kfz-Versicherung
+  doc_type: ipid
+  language: de
+  route: probe_needed
+  note: Largest German motor insurer by policy count. Probe the Downloads area.
+- id: de-allianz
+  market: DE
+  insurer: Allianz Versicherungs-AG
+  product: Kfz-Versicherung
+  doc_type: ipid
+  language: de
+  route: probe_needed
+- id: de-axa
+  market: DE
+  insurer: AXA Versicherung AG
+  product: Kfz-Versicherung
+  doc_type: ipid
+  language: de
+  route: probe_needed
+- id: de-ergo
+  market: DE
+  insurer: ERGO Versicherung AG
+  product: Kfz-Versicherung
+  doc_type: ipid
+  language: de
+  route: probe_needed
+- id: de-lvm
+  market: DE
+  insurer: LVM Versicherung
+  product: Kfz-Versicherung
+  doc_type: ipid
+  language: de
+  route: probe_needed
+- id: de-vhv
+  market: DE
+  insurer: VHV Allgemeine Versicherung AG
+  product: Kfz-Versicherung
+  doc_type: ipid
+  language: de
+  route: probe_needed
+- id: de-devk
+  market: DE
+  insurer: DEVK
+  product: Kfz-Versicherung
+  doc_type: ipid
+  language: de
+  route: probe_needed
+- id: de-r+v
+  market: DE
+  insurer: R+V Versicherung
+  product: Kfz-Versicherung
+  doc_type: ipid
+  language: de
+  route: probe_needed
+- id: dk-tryg
+  market: DK
+  insurer: Tryg Forsikring
+  product: Bilforsikring
+  doc_type: ipid
+  language: da
+  route: probe_needed
+- id: dk-topdanmark
+  market: DK
+  insurer: Topdanmark
+  product: Bilforsikring
+  doc_type: ipid
+  language: da
+  route: probe_needed
+- id: dk-almbrand
+  market: DK
+  insurer: Alm. Brand
+  product: Bilforsikring
+  doc_type: ipid
+  language: da
+  route: probe_needed
+  note: Acquired Codan's Danish business — check whether both product lines persist.
+- id: dk-if
+  market: DK
+  insurer: If Forsikring
+  product: Bilforsikring
+  doc_type: ipid
+  language: da
+  route: probe_needed
+- id: dk-gjensidige
+  market: DK
+  insurer: Gjensidige Forsikring
+  product: Bilforsikring
+  doc_type: ipid
+  language: da
+  route: probe_needed
+- id: dk-alka
+  market: DK
+  insurer: Alka Forsikring
+  product: Bilforsikring
+  doc_type: ipid
+  language: da
+  route: probe_needed
+- id: dk-gf
+  market: DK
+  insurer: GF Forsikring
+  product: Bilforsikring
+  doc_type: ipid
+  language: da
+  route: probe_needed
+- id: dk-lb
+  market: DK
+  insurer: LB Forsikring
+  product: Bilforsikring
+  doc_type: ipid
+  language: da
+  route: probe_needed
+- id: dk-kobstaederne
+  market: DK
+  insurer: Købstædernes Forsikring
+  product: Bilforsikring
+  doc_type: ipid
+  language: da
+  route: probe_needed
+- id: dk-thisted
+  market: DK
+  insurer: Thisted Forsikring
+  product: Bilforsikring
+  doc_type: ipid
+  language: da
+  route: probe_needed
+- id: eu-eiopa-template
+  market: EU
+  insurer: EIOPA
+  product: Editable IPID template + icon set
+  doc_type: template
+  language: multi
+  url: https://www.eiopa.europa.eu/browse/regulation-and-policy/insurance-distribution-directive-idd/editable-template-insurance-product-information-document-ipid_en
+  route: open
+  probed: 2026-09-15
+  findings:
+  - 'EIOPA states manufacturers "are not obliged to use these specific files and may
+    choose instead to develop their own IPIDs that meet the requirements of the IPID
+    Implementing Regulation." Confirms the container is required but the realisation
+    is not — section matching must be semantic, not positional.
+
+    '
+  - Templates exist in multiple EU languages; useful as a translation cross-check
+    for app/vocab.py.

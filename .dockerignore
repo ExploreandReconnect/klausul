@@ -1,0 +1,12 @@
+corpus/pdf/
+corpus/labels/
+corpus/contact/
+docs/
+tests/
+tools/
+.git/
+.github/
+__pycache__/
+*.pyc
+.env
+.venv/
