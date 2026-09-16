@@ -16,9 +16,14 @@ from .nebius import MODEL_EXTRACT, complete_json
 from .vocab import NUMBER_FORMATS
 from .schema import COVERAGES, EXCESSES, Field, Policy, Status
 
-SYSTEM = """You extract structured data from European motor-insurance documents.
+SYSTEM = """detailed thinking off
+
+You extract structured data from European motor-insurance documents.
 
 You are given the full text of one document, page by page. Return JSON only.
+
+Do not reason before answering. Emit the JSON object directly: this document is short
+and the budget is for the answer, not for deliberation about it.
 
 Absolute rules:
 1. Never invent a value. If the document does not state something, the field's status
@@ -137,6 +142,61 @@ def to_policy(raw: dict, doc_name: str) -> Policy:
     return p
 
 
+class EmptyExtraction(RuntimeError):
+    """The document had readable text, and the model still returned nothing.
+
+    This exists because of a specific failure we shipped: when extraction came back
+    empty, every dimension became `not_found`, the comparison dutifully reported
+    "18 could not be established", and the page presented that as a finding about the
+    policy — in confident typography, with a generated question list on top.
+
+    The PRD already forbids reading `not_found` as `not covered`. This is its twin:
+    a failure to READ must never be presented as a finding about the DOCUMENT. When
+    the model returns nothing from a document that demonstrably has text, the honest
+    answer is "we could not read this", and it must interrupt the pipeline rather
+    than flow into it.
+    """
+
+    def __init__(self, name: str, *, chars: int, stats: dict):
+        self.name, self.chars, self.stats = name, chars, stats
+        super().__init__(
+            f"{name}: {chars:,} characters of text were read from the PDF, but the model "
+            f"returned no usable field on two attempts "
+            f"(finish_reason={stats.get('finish_reason')!r}, "
+            f"completion_tokens={stats.get('completion_tokens')}, "
+            f"max_tokens={stats.get('max_tokens')})"
+        )
+
+
+def evidence_count(p: Policy) -> int:
+    """How many fields the model actually grounded in the document.
+
+    Only statuses that assert something count. `not_found` and `not_applicable` are
+    legitimate answers, but a document where EVERY field is one of those has not been
+    read — no real IPID is silent on all eighteen dimensions.
+    """
+    told = (Status.EXPLICIT, Status.INFERRED, Status.AMBIGUOUS, Status.CONFLICTING)
+    n = 0
+    for f in _all_fields(p):
+        if f.status in told and (f.value is not None or f.source_text):
+            n += 1
+    return n
+
+
+def _all_fields(p: Policy):
+    for node in (p.document, p.price):
+        for name in type(node).model_fields:
+            v = getattr(node, name, None)
+            if isinstance(v, Field):
+                yield v
+    for d in (p.coverage, p.coverage_limits, p.excesses):
+        yield from d.values()
+    for lst in (p.exclusions, p.obligations, p.claims_conditions):
+        yield from lst
+    for v in (p.territories, p.foreign_use_limitations, p.duration, p.cancellation, p.no_claims):
+        yield v
+
+
 def extract(path: str | Path, *, model: str = MODEL_EXTRACT, market: str | None = None) -> Policy:
     """`market` is an ISO-2 code (DK/DE/IE/FR/NL). It selects the number convention,
     which is a 100x error if guessed wrong — see app.vocab.NUMBER_FORMATS."""
@@ -153,8 +213,21 @@ def extract(path: str | Path, *, model: str = MODEL_EXTRACT, market: str | None 
                 f"{fmt.example} — decimal '{fmt.decimal}', thousands "
                 f"'{fmt.thousands or 'space'}', currency {fmt.currency}.\n") if fmt else \
                f"\nMARKET: {market} (convention unknown — state low confidence on any amount).\n"
-    raw = complete_json(SYSTEM, f"{shape}{hint}\nDOCUMENT: {path.name}\n{text}", model=model)
-    return to_policy(raw, path.name)
+    prompt = f"{shape}{hint}\nDOCUMENT: {path.name}\n{text}"
+
+    stats: dict = {}
+    policy = to_policy(complete_json(SYSTEM, prompt, model=model, stats=stats), path.name)
+    if evidence_count(policy) > 0:
+        return policy
+
+    # Nothing was grounded. One clean retry: this model is non-deterministic even at
+    # temperature 0, and an empty answer is usually a bad draw rather than a bad document.
+    retry: dict = {}
+    policy = to_policy(complete_json(SYSTEM, prompt, model=model, stats=retry), path.name)
+    if evidence_count(policy) > 0:
+        return policy
+
+    raise EmptyExtraction(path.name, chars=len(text), stats=retry or stats)
 
 
 def load_fixture(path: str | Path) -> Policy:

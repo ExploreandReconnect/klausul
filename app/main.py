@@ -25,7 +25,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .compare import compare
 from .explain import actions, explain_one
-from .extract import extract
+from .extract import EmptyExtraction, extract
 from .nebius import ModelOutputError
 from .relevance import Profile, weigh
 from .vocab import NUMBER_FORMATS
@@ -148,6 +148,17 @@ async def compare_endpoint(
                 asyncio.to_thread(extract, paths[0], market=market),
                 asyncio.to_thread(extract, paths[1], market=market),
             )
+        except EmptyExtraction as e:
+            # NOT a finding. The pipeline stops here rather than comparing two empty
+            # policies and rendering eighteen confident "could not be established" rows.
+            raise HTTPException(502, {
+                "error": "could_not_read",
+                "message": f"The model could not read {e.name}. "
+                           "This is a failure on our side, not a finding about your policy.",
+                "document": e.name,
+                "pdf_text_chars": e.chars,
+                "model_call": e.stats,
+            }) from e
         except ModelOutputError as e:
             # The model misbehaved. Say so, and show what it actually emitted — this
             # product's whole claim is that a failure is visible rather than plausible,

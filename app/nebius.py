@@ -32,7 +32,14 @@ def client():
 
 
 def complete(system: str, user: str, *, model: str, json_mode: bool = False,
-             temperature: float = 0.0, max_tokens: int = 8000) -> str:
+             temperature: float = 0.0, max_tokens: int = 8000,
+             stats: dict | None = None) -> str:
+    """`stats`, if given, is filled with what the call actually did.
+
+    finish_reason is the one that matters: "length" means the answer was cut off, and a
+    cut-off answer from a reasoning model is how you get valid-looking JSON full of
+    nulls. Without it, an empty extraction and a truncated one are indistinguishable.
+    """
     kwargs: dict[str, Any] = dict(
         model=model,
         messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
@@ -42,7 +49,18 @@ def complete(system: str, user: str, *, model: str, json_mode: bool = False,
     if json_mode:
         kwargs["response_format"] = {"type": "json_object"}
     resp = client().chat.completions.create(**kwargs)
-    return resp.choices[0].message.content or ""
+    choice = resp.choices[0]
+    text = choice.message.content or ""
+    if stats is not None:
+        usage = getattr(resp, "usage", None)
+        stats.update(
+            finish_reason=getattr(choice, "finish_reason", None),
+            chars=len(text),
+            max_tokens=max_tokens,
+            completion_tokens=getattr(usage, "completion_tokens", None),
+            prompt_tokens=getattr(usage, "prompt_tokens", None),
+        )
+    return text
 
 
 class ModelOutputError(RuntimeError):
@@ -102,9 +120,11 @@ REPAIR = (
 
 
 def complete_json(system: str, user: str, *, model: str = MODEL_EXTRACT,
-                  max_tokens: int = 8000) -> dict:
+                  max_tokens: int = 16000, stats: dict | None = None) -> dict:
     raw = _strip_reasoning(complete(system, user, model=model, json_mode=True,
-                                    max_tokens=max_tokens))
+                                    max_tokens=max_tokens, stats=stats))
+    if stats is not None:
+        stats["attempts"] = 1
     try:
         return _loads(raw)
     except json.JSONDecodeError as first:
@@ -115,7 +135,9 @@ def complete_json(system: str, user: str, *, model: str = MODEL_EXTRACT,
     try:
         repaired = _strip_reasoning(complete(
             system + "\n\n" + REPAIR, user, model=model, json_mode=True,
-            max_tokens=max_tokens))
+            max_tokens=max_tokens, stats=stats))
+        if stats is not None:
+            stats["attempts"] = 2
         return _loads(repaired)
     except json.JSONDecodeError as second:
         raise ModelOutputError(
