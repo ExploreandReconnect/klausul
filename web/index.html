@@ -444,6 +444,20 @@ legend{font-size:13px;letter-spacing:.14em;text-transform:uppercase;font-weight:
 
 /* Blanks collected below the chart rather than scattered through it. */
 .blanks{margin-bottom:26px}
+
+/* The undisclosed set: shown in full, with evidence, but folded so it cannot compete
+   with the findings. Hiding it would be a filter the reader has to trust; giving it
+   equal weight would assert equal consequence. One click is the honest middle. */
+.undisc{margin:34px 0 8px;border-top:1px solid var(--rule);padding-top:4px}
+.undisc > summary{cursor:pointer;list-style:none;padding:16px 0 14px;font-size:12px;
+  letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--ink-3);
+  display:flex;align-items:center;gap:10px}
+.undisc > summary::-webkit-details-marker{display:none}
+.undisc > summary::before{content:"+";font-size:15px;letter-spacing:0;color:var(--pine)}
+.undisc[open] > summary::before{content:"–"}
+.undisc > summary:hover{color:var(--ink)}
+.undisc > summary:focus-visible{outline:3px solid var(--pine);outline-offset:3px}
+.undisc .h2sub{margin-bottom:18px}
 .bar{display:block;height:3px;background:var(--rule);margin-top:18px;max-width:360px;overflow:hidden}
 .bar i{display:block;height:100%;width:30%;background:var(--pine);
   animation:slide 1.5s cubic-bezier(.4,0,.6,1) infinite}
@@ -1418,9 +1432,15 @@ function buildLive(res){
 
     if (d.key === 'premium'){ premium = d; continue; }
     if (UNRESOLVED.includes(d.verdict)){
-      const row = {...base, unit:'NONE'};
+      /* Two different facts wearing one label. "Stated last year, absent now" is a
+         finding about this renewal. "Neither document ever mentions it" is a fact about
+         what an IPID covers — an IPID is two pages and does not discuss everything the
+         schema can compare. Giving them equal weight asserts equal consequence, which
+         is a claim the evidence does not support. */
+      const sym = d.verdict === 'missing_both';
+      const row = {...base, unit:'NONE', sym};
       money.push(row);
-      if (!hole) hole = {d, row};
+      if (!sym && !hole) hole = {d, row};   // the showcase must be a real finding
       continue;
     }
     if (d.key === 'territories'){
@@ -1437,7 +1457,10 @@ function buildLive(res){
   }
 
   const c = res.counts || {};
-  const worse = c.better_a || 0, better = c.better_b || 0, open = c.needs_checking || 0;
+  const worse = c.better_a || 0, better = c.better_b || 0;
+  // Only asymmetric absences are findings; the rest are undisclosed dimensions.
+  const unconfirmed = money.filter(r => r.unit === 'NONE' && !r.sym).length;
+  const undisclosed = money.filter(r => r.unit === 'NONE' &&  r.sym).length;
   const A = res.mode === 'renewal';
 
   return {
@@ -1445,9 +1468,15 @@ function buildLive(res){
     meta: `${esc(cur.insurer || cur.name || 'Your policy')} vs ${esc(oth.insurer || oth.name || 'the other document')}<br>
            Two documents · ${res.differences.length} compared fields · ${esc(MARKETS[res.market] || res.market)} · Nemotron on Nebius Token Factory`,
     eyebrow: A ? 'Your renewal' : 'Your policy · vs · the offer',
-    h1: open ? 'Something here nobody can confirm.'
-             : worse > better ? 'The line between your money and theirs has moved.'
-             : 'Most of this is fine. Here is what moved.',
+    /* A confirmed move against the reader is the news. Leading with the unknowns
+       buried it: three things had moved and the page opened by saying nobody could
+       confirm anything. The unknown gets the headline only when it IS the story. */
+    h1: worse > 0 ? (A ? 'The line between your money and theirs has moved.'
+                       : 'You would carry more than you do now.')
+      : better > 0 ? (A ? 'Most of this is fine. Here is what moved.'
+                        : 'You would carry less than you do now.')
+      : unconfirmed > 0 ? 'Something here nobody can confirm.'
+      : 'Nothing material changed.',
     lede: A ? 'This is what you now carry yourself when something happens.'
             : 'This is what you would carry instead.',
     sub: A ? 'Drawn to the same scale. The dotted line is last year. Tap a row for the wording.'
@@ -1456,7 +1485,9 @@ function buildLive(res){
     keyGhost:   A ? 'Last year' : 'Your policy now',
     tally: [['bad', String(worse), 'moved against you'],
             ['good', String(better), 'moved for you'],
-            ['na', String(open), open === 1 ? 'could not be drawn' : 'could not be drawn']],
+            ['na', String(unconfirmed),
+             unconfirmed === 1 ? 'could not be confirmed' : 'could not be confirmed']],
+    undisclosed,
     because: (res.uncertainties || []).length
       ? `<b>${esc(res.uncertainties[0])}</b>`
       : 'Ordered by what your circumstances make most relevant. The figures do not move — only their order does.',
@@ -1490,6 +1521,25 @@ function page(){
   return {...m, money: R.money, time: R.time, geo: R.geo, hasHole: true, source:'cached'};
 }
 
+/* The featured absence: one of the asymmetric findings, shown at length with the pages
+   it was and was not on. It used to carry its own <h2>, which duplicated the section that
+   now lists every member of the same set. */
+function holeHtml(p){
+  return `
+      <div class="hole">
+        <div class="t">Cannot be established</div>
+        <h3>${esc(p.holeH3)}</h3>
+        <p>${p.holeP}</p>
+        ${(p.pages || []).length ? `<div class="two">${p.pages.map(pg => `
+          <div class="pg">
+            <div class="ph"><span>${esc(pg.ttl)}</span><span>${esc(pg.pg)}</span></div>
+            ${pg.lines.map(([l,on]) => `<p class="ln${on?' on':''}">${on?`<mark>${esc(l)}</mark>`:esc(l)}</p>`).join('')}
+            ${pg.gap ? `<div class="gap"><b>${esc(pg.gap[0])}</b>${esc(pg.gap[1])}</div>` : ''}
+            ${pg.after ? `<p class="ln">${esc(pg.after[0])}</p>` : ''}
+          </div>`).join('')}</div>` : ''}
+      </div>`;
+}
+
 function paint(){
   const p = page();
   document.getElementById('meta').innerHTML = p.meta;
@@ -1505,6 +1555,11 @@ function paint(){
      preserved inside each group. */
   const drawable = (p.money || []).filter(r => r.unit !== 'NONE');
   const blanks   = (p.money || []).filter(r => r.unit === 'NONE');
+  /* Findings first, at full weight. Dimensions neither document discusses are still
+     shown in full, with their evidence — collapsed, with the count in the heading, so
+     nothing is hidden and nothing competes with the findings for attention. */
+  const unconfirmed = blanks.filter(r => !r.sym);
+  const undisclosed = blanks.filter(r =>  r.sym);
   const t = tableRows(p, {money: p.money, time: p.time, geo: p.geo});
   const EUR_T = axisTicks(drawable);
   const LIM_T = axisTicks(p.limits);
@@ -1547,22 +1602,24 @@ function paint(){
       `<div class="t3 ${k}"><span class="n">${esc(n)}</span><span class="l">${esc(l)}</span></div>`).join('')}</div>
     <p class="because">${p.because}</p>
 
-    ${p.hasHole ? `
-      <h2>${blanks.length > 1 ? `${blanks.length} things nobody can confirm` : esc(p.holeTitle)}</h2>
-      <p class="h2sub">${esc(p.holeSub)}</p>
-      ${blanks.length > 1 ? `<div class="blanks">${blanks.map(r => rowHtml(r, p)).join('')}</div>` : ''}
-      <div class="hole">
-        <div class="t">Cannot be established</div>
-        <h3>${esc(p.holeH3)}</h3>
-        <p>${p.holeP}</p>
-        ${(p.pages || []).length ? `<div class="two">${p.pages.map(pg => `
-          <div class="pg">
-            <div class="ph"><span>${esc(pg.ttl)}</span><span>${esc(pg.pg)}</span></div>
-            ${pg.lines.map(([l,on]) => `<p class="ln${on?' on':''}">${on?`<mark>${esc(l)}</mark>`:esc(l)}</p>`).join('')}
-            ${pg.gap ? `<div class="gap"><b>${esc(pg.gap[0])}</b>${esc(pg.gap[1])}</div>` : ''}
-            ${pg.after ? `<p class="ln">${esc(pg.after[0])}</p>` : ''}
-          </div>`).join('')}</div>` : ''}
-      </div>` : ''}
+    ${unconfirmed.length ? `
+      <h2>${MODE === 'a' ? 'Stated last year, absent now' : 'In one document, not the other'} — ${unconfirmed.length}</h2>
+      <p class="h2sub">A clause that appears on one side and not the other. <b>This is the
+        finding, not a gap in it</b> — an absent clause is not a removed benefit, so it is
+        drawn as a hole and becomes a question for your insurer.</p>
+      <div class="blanks">${unconfirmed.map(r => rowHtml(r, p)).join('')}</div>
+      ${p.hasHole ? holeHtml(p) : ''}` : ''}
+
+    ${undisclosed.length ? `
+      <details class="undisc">
+        <summary>Neither document discusses — ${undisclosed.length}</summary>
+        <p class="h2sub">Dimensions Klausul compares that these two documents never mention.
+          <b>Not a change, and not a gap in your cover</b> — an Insurance Product Information
+          Document is two pages and does not discuss everything that can be compared.
+          Shown in full so you can check rather than take our word for it.</p>
+        ${undisclosed.map(r => rowHtml(r, p)).join('')}
+      </details>` : ''}
+
 
     <h2>${esc(p.priceTitle)}</h2>
     <p class="h2sub">${esc(p.priceSub)}</p>
