@@ -171,6 +171,9 @@ h2{font-size:13px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;
 .k-hatch{background:var(--added);
   background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.34) 0 3px,transparent 3px 7px)}
 .k-dash{border:2px dashed var(--unknown)}
+/* Green was already on the page — a falling excess, and now a rising limit — but it was
+   the only mark with no entry in the key. A grammar with an unlisted letter isn't one. */
+.k-give{background:var(--returned)}
 
 details.tbl{margin-top:16px}
 details.tbl summary{font-size:14px;color:var(--pine);cursor:pointer;font-weight:600;
@@ -877,18 +880,29 @@ function bars(r, m){
   }
 
   const now = pc(r.now, r.max), was = pc(r.was, r.max);
-  let out = `<div class="seg mine" data-from-w="${was}" style="width:${now}%"></div>`;
-  if (r.now > r.was)
-    out += `<div class="seg add" data-from-left="${was}" data-from-w="0" style="left:${was}%;width:${now-was}%"></div>`;
-  if (r.now < r.was)
-    out += `<div class="seg give${r.conditional?' cond':''}" data-fade="1" style="left:${now}%;width:${was-now}%"></div>`;
-  if (r.now !== r.was) out += `<div class="ghost" style="left:${was}%"><b>${m.ghostLabel}</b></div>`;
-
   const d = r.now - r.was;
-  const dtxt = d > 0 ? `+${eur(d)} yours`
-             : d < 0 ? `−${eur(-d)}${r.conditional ? ' ' + r.conditional : ''}` : 'unchanged';
-  const dcol = d > 0 ? 'var(--added)'
-             : d < 0 ? (r.conditional ? 'var(--unknown)' : 'var(--returned)') : 'var(--ink-3)';
+
+  /* An excess and a limit move in opposite moral directions. On an excess, bigger means
+     more of the claim lands on YOU — red, hatched, "yours". On a limit, bigger means the
+     insurer carries more — which is in your favour. Drawing both the same way told a
+     reader that a legal-cover increase from EUR100,000 to EUR150,000 was
+     "+EUR50,000 yours", in the colour reserved for new liability. Exactly backwards. */
+  const worse = r.theirs ? d < 0 : d > 0;
+  const growCls = worse ? 'add' : 'give';
+  const word = r.theirs ? ' covered' : ' yours';
+
+  let out = `<div class="seg mine" data-from-w="${was}" style="width:${now}%"></div>`;
+  if (d > 0)
+    out += `<div class="seg ${growCls}" data-from-left="${was}" data-from-w="0" style="left:${was}%;width:${now-was}%"></div>`;
+  if (d < 0)
+    out += `<div class="seg ${worse ? 'add' : 'give'}${r.conditional?' cond':''}" data-fade="1" style="left:${now}%;width:${was-now}%"></div>`;
+  if (d !== 0) out += `<div class="ghost" style="left:${was}%"><b>${m.ghostLabel}</b></div>`;
+
+  const dtxt = d === 0 ? 'unchanged'
+             : `${d > 0 ? '+' : '−'}${eur(Math.abs(d))}${r.conditional ? ' ' + r.conditional : word}`;
+  const dcol = d === 0 ? 'var(--ink-3)'
+             : r.conditional ? 'var(--unknown)'
+             : worse ? 'var(--added)' : 'var(--returned)';
   const edge = Math.max(now, was);
   // A zero bar has no dark ground, so its label takes ink; a bar that reaches the
   // right edge puts its delta inside the last segment rather than off the track.
@@ -910,9 +924,11 @@ function caption(r, m){
   if (r.unit === 'NONE') return `<span class="na">Cannot be drawn.</span> Unresolved on both sides.`;
   if (r.theirsFirst) return `<b>30 → 14 days</b> theirs. <span class="up">16 days yours.</span>`;
   const d = r.now - r.was;
-  if (d === 0) return `<b>${eur(r.now)}</b> yours. Identical.`;
-  return `<b>${eur(r.was)} → ${eur(r.now)}</b> yours.
-          <span class="${d>0?'up':(r.conditional?'na':'dn')}">${d>0?'+':'−'}${eur(Math.abs(d))}${r.conditional?' '+r.conditional:''}</span>`;
+  const side = r.theirs ? 'covered' : 'yours';
+  const worse = r.theirs ? d < 0 : d > 0;
+  if (d === 0) return `<b>${eur(r.now)}</b> ${side}. Identical.`;
+  return `<b>${eur(r.was)} → ${eur(r.now)}</b> ${side}.
+          <span class="${r.conditional ? 'na' : (worse ? 'up' : 'dn')}">${d>0?'+':'−'}${eur(Math.abs(d))}${r.conditional?' '+r.conditional:''}</span>`;
 }
 
 function aria(r, m){
@@ -1502,6 +1518,7 @@ function paint(){
       <div><i class="k-theirs"></i> Theirs</div>
       <div><i class="k-last"></i> ${esc(p.keyGhost)}</div>
       <div><i class="k-hatch"></i> Newly yours</div>
+      <div><i class="k-give"></i> Moved your way</div>
       <div><i class="k-dash"></i> Not found</div>
     </div>
 

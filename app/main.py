@@ -84,10 +84,23 @@ def health():
     }
 
 
+def _band(km: int) -> str:
+    """The page offers three bands and sends a representative number so the weighting
+    thresholds work. That number must never reach the model as prose: the reader chose
+    "Under 10,000 km" and would be told "you drive 8,000 km a year" — a figure they never
+    gave, stated back to them as a fact about themselves. The product refuses to invent a
+    value it did not find in a document; it owes the reader the same about their own life."""
+    if km < 10_000:
+        return "under 10,000 km a year"
+    if km <= 20_000:
+        return "between 10,000 and 20,000 km a year"
+    return "over 20,000 km a year"
+
+
 def _profile_text(p: Profile) -> str:
     bits = []
     if p.annual_km:
-        bits.append(f"{p.annual_km:,} km a year")
+        bits.append(_band(p.annual_km))
     if p.drives_abroad is not None:
         bits.append("drives abroad regularly" if p.drives_abroad else "drives domestically only")
     if p.vehicle_dependency:
