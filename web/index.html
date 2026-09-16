@@ -267,10 +267,18 @@ ol.q2 .why{grid-column:2;font-size:15.5px;color:var(--ink-3);line-height:1.5;mar
 .mode-chip.live .dot{background:var(--returned)}
 .mode-chip b{font-family:inherit;font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:10px}
 
-/* Claim left, evidence right. Below 900px they stack, claim first. */
+/* Claim and action left, evidence right. Stacked, the order changes on purpose:
+   claim, then EVIDENCE, then the ask. A visitor should never be asked to choose before
+   they have been shown anything — which is what happened when the buttons simply
+   inherited their place from the left-hand column. */
 .hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.86fr);gap:0 46px;
-  align-items:start}
-@media (max-width:900px){.hero{grid-template-columns:1fr;gap:0}}
+  align-items:start;grid-template-areas:"claim evidence" "action evidence"}
+.hero-l{grid-area:claim}
+.hero-r{grid-area:evidence}
+.hero .choices{grid-area:action}
+@media (max-width:900px){
+  .hero{grid-template-columns:1fr;gap:0;grid-template-areas:"claim" "evidence" "action"}
+}
 .hero-r{border-left:1px solid var(--rule);padding-left:34px;margin-top:6px}
 @media (max-width:900px){.hero-r{border-left:0;padding-left:0;margin-top:30px;
   border-top:1px solid var(--rule);padding-top:22px}}
@@ -506,21 +514,21 @@ legend{font-size:13px;letter-spacing:.14em;text-transform:uppercase;font-weight:
           <li><b>Open source.</b> MIT — the extraction prompt is in the repo.</li>
           <li><b>EU standard.</b> Fields follow the IPID structure in Regulation 2017/1469.</li>
         </ul>
+      </div>
 
-        <div class="choices">
-          <button class="choice" type="button" onclick="choose('a')">
-            <span class="n">A</span>
-            <h3>My insurance was renewed</h3>
-            <p>Last year's documents, and the renewal you have just been sent.</p>
-            <span class="go">See what changed →</span>
-          </button>
-          <button class="choice" type="button" onclick="choose('b')">
-            <span class="n">B</span>
-            <h3>I have another offer</h3>
-            <p>The policy you hold today, and the offer you are considering.</p>
-            <span class="go">See what you would carry →</span>
-          </button>
-        </div>
+      <div class="choices">
+        <button class="choice" type="button" onclick="choose('a')">
+          <span class="n">A</span>
+          <h3>My insurance was renewed</h3>
+          <p>Last year's documents, and the renewal you have just been sent.</p>
+          <span class="go">See what changed →</span>
+        </button>
+        <button class="choice" type="button" onclick="choose('b')">
+          <span class="n">B</span>
+          <h3>I have another offer</h3>
+          <p>The policy you hold today, and the offer you are considering.</p>
+          <span class="go">See what you would carry →</span>
+        </button>
       </div>
 
       <div class="hero-r">
