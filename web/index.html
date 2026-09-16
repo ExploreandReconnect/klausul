@@ -46,7 +46,12 @@
 html,body{background:var(--paper)}
 body{color:var(--ink);font-family:"Archivo",system-ui,-apple-system,sans-serif;
   font-variation-settings:"wdth" 100;font-size:17px;line-height:1.55;-webkit-font-smoothing:antialiased}
-.wrap{max-width:820px;margin:0 auto;padding-inline:16px;padding-block:0 72px}
+.wrap{max-width:820px;margin:0 auto;padding-inline:16px;padding-block:0 72px;
+  transition:max-width 200ms ease}
+/* The entry screen is the only one that benefits from width: it has to hold the claim,
+   the guarantees, the action and a live fragment of output at the same time. Reading
+   views stay at 820px, because a ledger wants a column and not a spread. */
+.wrap.wide{max-width:1140px}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 
 .head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;
@@ -259,15 +264,24 @@ ol.q2 .why{grid-column:2;font-size:15.5px;color:var(--ink-3);line-height:1.5;mar
 .mode-chip.live .dot{background:var(--returned)}
 .mode-chip b{font-family:inherit;font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:10px}
 
-/* Two miniatures of real output. Not decoration — each is a fragment of what the
-   product actually returns, which is the only honest way to preview it. */
-.demo{display:grid;grid-template-columns:1fr 1fr;margin-top:38px;
-  border-top:1px solid var(--rule);border-bottom:1px solid var(--rule)}
-@media (max-width:680px){.demo{grid-template-columns:1fr}}
-.mini{padding:22px 30px 24px 0;border-right:1px solid var(--rule)}
-.mini + .mini{border-right:0;padding-left:30px}
-@media (max-width:680px){.mini{border-right:0;padding:20px 0;border-bottom:1px solid var(--rule)}
-  .mini + .mini{padding-left:0;border-bottom:0}}
+/* Claim left, evidence right. Below 900px they stack, claim first. */
+.hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.86fr);gap:0 46px;
+  align-items:start}
+@media (max-width:900px){.hero{grid-template-columns:1fr;gap:0}}
+.hero-r{border-left:1px solid var(--rule);padding-left:34px;margin-top:6px}
+@media (max-width:900px){.hero-r{border-left:0;padding-left:0;margin-top:30px;
+  border-top:1px solid var(--rule);padding-top:22px}}
+
+/* The four things a stranger needs before uploading a document with their name on it. */
+.trust{list-style:none;margin:26px 0 0;padding:20px 0 0;border-top:1px solid var(--rule);
+  display:grid;grid-template-columns:1fr 1fr;gap:14px 26px;font-size:13px;
+  color:var(--ink-2);line-height:1.45}
+@media (max-width:560px){.trust{grid-template-columns:1fr;gap:11px}}
+.trust b{display:block;color:var(--ink);font-weight:600;font-size:13px}
+.lede .dur{display:block;margin-top:10px;font-size:14px;color:var(--ink-3)}
+
+/* A fragment of real output. Not decoration — the only honest way to preview the thing. */
+.mini{padding:0}
 .mini .cap2{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;
   color:var(--pine);margin-bottom:14px}
 .mini .scen{font-size:15px;font-weight:500;margin-bottom:9px;line-height:1.3;min-height:2.6em}  /* two lines, so both tracks share a baseline */
@@ -308,13 +322,24 @@ ol.q2 .why{grid-column:2;font-size:15.5px;color:var(--ink-3);line-height:1.5;mar
   background:repeating-linear-gradient(135deg,transparent 0 9px,rgba(138,90,0,.13) 9px 11px)}
 .mini .hollow span{position:absolute;top:50%;left:11px;transform:translateY(-50%);
   font-size:12.5px;font-weight:700;color:var(--unknown)}
-.mini .says{font-size:13.5px;color:var(--ink-2);line-height:1.5;margin-top:11px;max-width:34ch}
+.mini .says{font-size:13.5px;color:var(--ink-2);line-height:1.5;margin-top:13px;max-width:36ch}
 .mini .says b{color:var(--ink);font-weight:600}
-.exlabel{font-size:12px;color:var(--ink-3);margin-top:12px;line-height:1.5}
+
+/* The quote the figure came from, in the document's own language. */
+.evq{margin:14px 0 0;padding:12px 14px;background:#fff;border:1px solid var(--rule);
+  border-left:2px solid var(--pine)}
+.evq blockquote{margin:0;font-size:13.5px;line-height:1.5;color:var(--ink)}
+.evq figcaption{margin-top:7px;font-size:11px;color:var(--ink-3);line-height:1.4}
+.evq.miss{border-left-color:var(--unknown);background:repeating-linear-gradient(135deg,
+  #fff 0 9px,rgba(138,90,0,.05) 9px 11px)}
+.evq.miss blockquote{color:var(--unknown);font-weight:600}
+.exlabel{font-size:12px;color:var(--ink-3);margin-top:14px;line-height:1.5;
+  padding-top:12px;border-top:1px solid var(--rule)}
 
 /* entry */
-.choices{display:grid;grid-template-columns:1fr 1fr;gap:0;margin-top:38px;border-top:2px solid var(--ink)}
-@media (max-width:680px){.choices{grid-template-columns:1fr}}
+.choices{display:grid;grid-template-columns:1fr;gap:0;margin-top:30px;border-top:2px solid var(--ink)}
+.choice{border-right:0;padding-right:0}
+.choice + .choice{padding-left:0;padding-top:24px}
 .choice{appearance:none;background:none;border:0;border-bottom:1px solid var(--rule);
   border-right:1px solid var(--rule);font:inherit;color:inherit;text-align:left;cursor:pointer;
   padding:26px 26px 28px 0;display:block;width:100%;transition:background 160ms ease-out}
@@ -417,11 +442,32 @@ legend{font-size:13px;letter-spacing:.14em;text-transform:uppercase;font-weight:
 .bar i{display:block;height:100%;width:30%;background:var(--pine);
   animation:slide 1.5s cubic-bezier(.4,0,.6,1) infinite}
 @keyframes slide{0%{transform:translateX(-110%)}100%{transform:translateX(370%)}}
+/* Once the left column can hold them, both choices sit in one row so neither falls below
+   the fold. A visitor who cannot see option B does not know the product has one.
+   Placed last: these have the same specificity as the base .choice rules, so source
+   order is the only thing deciding which wins. */
+@media (min-width:1040px){
+  .choices{grid-template-columns:1fr 1fr;margin-top:26px}
+  .choice{border-right:1px solid var(--rule);padding:22px 24px 24px 0}
+  .choice:last-child{border-right:0}
+  .choice + .choice{padding-left:26px;padding-top:22px}
+  .choice h3{font-size:21px;max-width:13ch;margin-bottom:6px}
+  .choice p{font-size:14.5px;max-width:27ch}
+  .choice .go{font-size:14px;margin-top:11px}
+  .choice .n{margin-bottom:8px}
+}
+.hero-r .tryit{font-size:14.5px;margin-top:16px;color:var(--ink-2);line-height:1.5}
+.hero-r .tryit button{font-size:14.5px}
+.mkts{margin-top:22px;padding-top:16px;border-top:1px solid var(--rule);
+  font-size:13.5px;color:var(--ink);line-height:1.6}
+.mkts b{font-weight:600}
+.mkts span{display:block;margin-top:7px;font-size:12.5px;color:var(--ink-3);line-height:1.5}
+.mkts span b{color:var(--ink-2);font-weight:600}
 </style>
 </head>
 <body>
 
-<div class="wrap">
+<div class="wrap wide">
   <header class="head">
     <span class="brand">Klausul</span>
     <span class="meta" id="meta">EU motor insurance · normalised to the IPID structure<br>
@@ -436,55 +482,86 @@ legend{font-size:13px;letter-spacing:.14em;text-transform:uppercase;font-weight:
 
   <!-- ── entry ─────────────────────────────────────────────────────────── -->
   <section class="view" id="v-entry">
-    <div class="eyebrow">EU motor insurance</div>
-    <h1>Know what changed before you renew.</h1>
-    <p class="lede">Upload the documents your insurer sent you. Klausul shows what moved,
-      <b>where every finding came from</b>, and what to ask before you decide.</p>
+    <!-- Claim on the left, evidence on the right, both above the fold. The evidence used
+         to sit underneath the claim, which meant a first-time visitor was asked to believe
+         something before being shown anything — and on a 1440x780 laptop the two things
+         they could actually DO were off the bottom of the screen entirely. -->
+    <div class="hero">
+      <div class="hero-l">
+        <div class="eyebrow">EU motor insurance</div>
+        <h1>Know what changed before you renew.</h1>
+        <p class="lede">Upload the two documents your insurer sent you. Klausul shows what moved,
+          <b>where every finding came from</b>, and what to ask before you decide.
+          <span class="dur">A minute or two, depending on the documents.</span></p>
 
-    <div class="demo">
-      <div class="mini">
-        <div class="cap2 fade" id="m-cap">What moved</div>
-        <div class="scen fade" id="m-scen">Your car is stolen · theft excess</div>
-        <div class="trk">
-          <span class="sg a" id="m-a" style="width:62.5%"></span>
-          <span class="sg b" id="m-b" style="left:37.5%;width:25%"></span>
-          <span class="gh" id="m-gh" style="left:37.5%"><b id="m-gl">last year</b></span>
-          <span class="in" id="m-in">€500</span>
-          <span class="dl2" id="m-d" style="left:calc(62.5% + 9px)">+€200 yours</span>
+        <!-- Four facts, all true, all previously in 9px grey at the bottom of the page.
+             A stranger is being asked to upload a document with their name, address and
+             policy number on it; these are the things they need before they will. -->
+        <ul class="trust">
+          <li><b>No account.</b> Nothing to sign up for.</li>
+          <li><b>Not stored.</b> Read in memory to answer one request, then gone.</li>
+          <li><b>Open source.</b> MIT — the extraction prompt is in the repo.</li>
+          <li><b>EU standard.</b> Fields follow the IPID structure in Regulation 2017/1469.</li>
+        </ul>
+
+        <div class="choices">
+          <button class="choice" type="button" onclick="choose('a')">
+            <span class="n">A</span>
+            <h3>My insurance was renewed</h3>
+            <p>Last year's documents, and the renewal you have just been sent.</p>
+            <span class="go">See what changed →</span>
+          </button>
+          <button class="choice" type="button" onclick="choose('b')">
+            <span class="n">B</span>
+            <h3>I have another offer</h3>
+            <p>The policy you hold today, and the offer you are considering.</p>
+            <span class="go">See what you would carry →</span>
+          </button>
         </div>
-        <p class="says fade" id="m-says">The dark part is what <b>you</b> carry. The dotted line
-          is where it sat last year. Every renewal is a line that moved without you.</p>
-        <div class="dots" id="m-dots" aria-hidden="true"></div>
       </div>
-      <div class="mini">
-        <div class="cap2">What could not be established</div>
-        <div class="scen">You break down in Germany · roadside assistance</div>
-        <div class="hollow"><span>Nothing here</span></div>
-        <p class="says">Stated in last year's documents. Absent from all 11 pages of this year's.
-          <b>An absent clause is not a removed benefit</b> — so it is drawn as a hole, and becomes
-          a question for your insurer.</p>
+
+      <div class="hero-r">
+        <div class="mini" id="m-panel">
+          <div class="cap2 fade" id="m-cap">What moved</div>
+          <div class="scen fade" id="m-scen">Your car is stolen · theft excess</div>
+
+          <div class="trk" id="m-trk">
+            <span class="sg a" id="m-a" style="width:62.5%"></span>
+            <span class="sg b" id="m-b" style="left:37.5%;width:25%"></span>
+            <span class="gh" id="m-gh" style="left:37.5%"><b id="m-gl">last year</b></span>
+            <span class="in" id="m-in">€500</span>
+            <span class="dl2" id="m-d" style="left:calc(62.5% + 9px)">+€200 yours</span>
+          </div>
+          <div class="hollow" id="m-hollow" hidden><span>Nothing here</span></div>
+
+          <!-- The most convincing object this product owns: a clause in the document's own
+               language, with the file and page it came from. It was previously invisible
+               until after you had already committed two PDFs. -->
+          <figure class="evq fade" id="m-ev">
+            <blockquote id="m-q">»Selvrisiko ved tyveri og røveri: 500 EUR«</blockquote>
+            <figcaption id="m-src">Fornyelse_2026.pdf · p. 3 · § Selvrisiko · extracted, not inferred</figcaption>
+          </figure>
+
+          <p class="says fade" id="m-says">The dark part is what <b>you</b> carry. The dotted line
+            is where it sat last year. Every renewal is a line that moved without you.</p>
+          <div class="dots" id="m-dots" aria-hidden="true"></div>
+          <p class="exlabel">Real output from the worked example — not an illustration of one.</p>
+          <p class="tryit">No documents to hand?
+            <button type="button" onclick="seeExample('a')">See the whole worked example</button>
+            — two invented Danish policies, a full cached run, every figure traceable.</p>
+
+          <!-- "Is this for me?" is the question a cold visitor asks second, and the page
+               had no answer to it. The market list is not marketing: the number convention
+               is a required input, because "2,500" is two and a half thousand in Ireland
+               and two and a half in Germany. -->
+          <p class="mkts"><b>Set up for</b> Denmark · Germany · Ireland · France · Netherlands<br>
+            <span>You name the country, because the number convention cannot be guessed —
+            <b>2,500</b> is two thousand five hundred in Ireland and two point five in Germany.</span></p>
+        </div>
       </div>
     </div>
-    <p class="exlabel">Both are real fragments of the worked example below, not illustrations.</p>
 
-    <div class="choices">
-      <button class="choice" type="button" onclick="choose('a')">
-        <span class="n">A</span>
-        <h3>My insurance was renewed</h3>
-        <p>Compare last year's documents with the renewal you have just been sent.</p>
-        <span class="go">See what changed →</span>
-      </button>
-      <button class="choice" type="button" onclick="choose('b')">
-        <span class="n">B</span>
-        <h3>I have another offer</h3>
-        <p>Compare the policy you hold today with an offer you are considering.</p>
-        <span class="go">See what you would carry →</span>
-      </button>
-    </div>
 
-    <p class="tryit">No documents to hand?
-      <button type="button" onclick="seeExample('a')">See a worked example</button> —
-      two invented Danish policies, a full cached run.</p>
 
     <p class="h2sub" id="apinote" style="margin-top:34px"></p>
 
@@ -924,16 +1001,31 @@ const FILES = {current:null, other:null};
 const ENTRY_SCENES = [
   {cap:'What moved', when:'Your car is stolen · theft excess',
    max:800, was:300, now:500, fmt:eur,
+   q:'»Selvrisiko ved tyveri og røveri: 500 EUR«',
+   src:'Fornyelse_2026.pdf · p. 3 · § Selvrisiko · extracted, not inferred',
    says:'The dark part is what <b>you</b> carry. The dotted line is where it sat last year. '
       + 'Every renewal is a line that moved without you.'},
   {cap:'What moved back', when:'A stone hits your windscreen · glass excess',
    max:800, was:150, now:100, fmt:eur,
+   q:'»Selvrisiko ved glasskade: 100 EUR«',
+   src:'Fornyelse_2026.pdf · p. 3 · § Selvrisiko · was 150 EUR in 2025',
    says:'Not everything moves against you. This one came back €50 — <b>drawn the same way, '
       + 'in the other direction</b>, so you can tell which is which without reading a word.'},
   {cap:'What moved', when:'Your car is in the workshop · replacement vehicle',
    max:30, was:30, now:14, fmt: n => n + ' days', theirs:true,
+   q:'»Der stilles erstatningsbil til rådighed i op til 14 dage pr. skadebegivenhed.«',
+   src:'Fornyelse_2026.pdf · p. 4 · was 30 dage in 2025',
    says:'Thirty days last year, fourteen now. <b>The sixteen days in between are yours to '
       + 'arrange</b> — the same line, measured in time instead of money.'},
+  /* The fourth beat is the one the product is really about. It used to sit in a separate
+     box beside the others; in the rotation it lands with the same weight as a finding,
+     which is exactly the claim being made about it. */
+  {cap:'What could not be established', when:'You break down in Germany · roadside assistance',
+   hole:true,
+   q:'No matching clause. 11 pages searched — no vejhjælp, assistance or Europa.',
+   src:'Fornyelse_2026.pdf · whole document · stated in 2025, absent here',
+   says:'<b>An absent clause is not a removed benefit.</b> So it is drawn as a hole rather '
+      + 'than filled in, and becomes a question for your insurer.'},
 ];
 
 let ENTRY_I = 0, ENTRY_TIMER = null, ENTRY_COUNT = null;
@@ -964,8 +1056,16 @@ function entryScene(i, instant){
   g('m-cap').textContent = s.cap;
   g('m-scen').textContent = s.when;
   g('m-says').innerHTML = s.says;
+  g('m-q').textContent = s.q;
+  g('m-src').textContent = s.src;
+  g('m-ev').className = 'evq fade' + (s.hole ? ' miss' : '');
   g('m-dots').innerHTML = ENTRY_SCENES.map((_, k) =>
     `<i class="${k === i ? 'on' : ''}"></i>`).join('');
+
+  // An absence has no bar to draw. That is the point, so it gets the hollow instead.
+  g('m-trk').hidden = !!s.hole;
+  g('m-hollow').hidden = !s.hole;
+  if (s.hole) return;
 
   if (s.theirs){
     // Days: the insurer covers the first stretch, you carry the rest.
@@ -1025,6 +1125,7 @@ function show(v){
   ['entry','upload','result'].forEach(x =>
     document.getElementById('v-' + x).hidden = x !== v);
   document.getElementById('modebar').hidden = v !== 'result';
+  document.querySelector('.wrap').classList.toggle('wide', v === 'entry');
   if (v === 'entry') animateEntry();
   else { clearInterval(ENTRY_TIMER); cancelAnimationFrame(ENTRY_COUNT); }
   window.scrollTo({top:0, behavior: reduced() ? 'auto' : 'smooth'});
