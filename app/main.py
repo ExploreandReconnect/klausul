@@ -231,3 +231,16 @@ async def compare_endpoint(
         "timings_s": {k: round(v, 2) for k, v in timings.items()},
         "total_s": round(time.perf_counter() - t0, 2),
     })
+
+
+# The page asks for `config.js` relative to itself, because on GitHub Pages every file
+# sits in one flat directory and that is the only spelling that works there. Served from
+# this container the page lives at "/", so the request lands on "/config.js" — which the
+# "/static" mount above does not answer. That 404 is silent: the page loads, finds no
+# window.KLAUSUL_API, and truthfully reports that no analysis service is configured.
+#
+# Mounting the web directory at the root as well makes one spelling correct on both
+# origins. It is registered last on purpose: Starlette matches routes in order, so
+# /health, /compare and the "/" handler above all still win.
+if WEB.is_dir():
+    app.mount("/", StaticFiles(directory=WEB, html=True), name="web")
