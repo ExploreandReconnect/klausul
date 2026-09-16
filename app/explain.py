@@ -21,7 +21,9 @@ You receive the difference as settled fact. Do not re-open it, re-rank it, or qu
 Return JSON: {"fact": "...", "meaning": "...", "for_you": "..."}
 
 fact     — restate the difference in one plain sentence with the numbers. No interpretation.
-meaning  — what it would mean in practice if the user had a claim. One or two sentences.
+meaning  — what it would mean in practice. The input contains `meaning_frame`, which
+           names the question this particular field answers; answer THAT question, not a
+           generic one. One or two sentences.
 for_you  — why it matters more or less GIVEN the user's stated circumstances, which are
            supplied to you. Reference the circumstance explicitly. If no circumstance
            applies, say the difference is not especially relevant to this user and why.
@@ -73,10 +75,47 @@ def _direction(d) -> str:
             f"Every sentence you write must agree that it {way.lower()}.")
 
 
+# What "in practice" means depends entirely on which side of the contract the field sits.
+# The prompt used to ask, for every row, what it would mean "if the user had a claim" —
+# which is exactly right for an excess and nonsense for a price. It produced: "If you have
+# a claim, you will need to pay 90 EUR more in premiums." You pay a premium whether you
+# claim or not. One frame cannot serve a payment, a deductible, a ceiling and a duration.
+FRAMES = {
+    "premium": "This is what you pay to hold the policy — every year, whether or not you "
+               "ever make a claim. Do NOT describe it as something that happens at claim "
+               "time. Say what the change costs over a year.",
+    "excess":  "This is what you pay out of your own pocket on an eligible claim, before "
+               "the insurer pays anything. Say what the change costs you on one claim.",
+    "limit":   "This is the most the insurer will pay on an eligible claim. Anything above "
+               "it is yours to cover. Say what the change means for a large claim.",
+    "days":    "This is how long the insurer provides the benefit. Beyond it you arrange "
+               "and pay for it yourself. Say what the change means for a long repair.",
+    "cover":   "This is whether the thing is covered at all. If a document does not settle "
+               "it, say it is unsettled — never that it is excluded.",
+    "place":   "This is where, or under what conditions, the cover applies. Say which "
+               "journeys or situations are affected.",
+    "record":  "This is how a no-claims record carries across. Say what it means for what "
+               "you pay later, not at claim time.",
+}
+
+
+def _frame(key: str) -> str:
+    if key == "premium":                      return FRAMES["premium"]
+    if key.startswith("excess"):              return FRAMES["excess"]
+    if key.startswith("limit"):               return FRAMES["limit"]
+    if key.endswith("days"):                  return FRAMES["days"]
+    if key.startswith("cov"):                 return FRAMES["cover"]
+    if key in ("territories", "foreign_use"): return FRAMES["place"]
+    if key == "no_claims":                    return FRAMES["record"]
+    return ("Say what this would mean in practice for the reader, in the terms the field "
+            "itself is about. Do not assume a claim scenario unless the field is about claims.")
+
+
 def explain_one(w: Weighted, profile_text: str, *, model: str = MODEL_EXPLAIN) -> Explanation:
     d = w.difference
     payload = {
         "direction": _direction(d),
+        "meaning_frame": _frame(d.key),
         "label": d.label,
         "verdict": d.verdict,
         "relevance": w.relevance,
