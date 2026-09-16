@@ -11,9 +11,17 @@ import json
 from pydantic import BaseModel
 
 from .nebius import MODEL_EXPLAIN, complete_json
+
+# Headroom, not appetite: the prose is short, but the model may spend tokens before it
+# starts writing, and a ceiling hit mid-object produces malformed JSON rather than a
+# shorter answer. Paying for unused headroom is cheaper than losing the explanation.
+EXPLAIN_TOKENS = 3000
+ACTIONS_TOKENS = 4000
 from .relevance import Weighted
 
-SYSTEM = """You write three short paragraphs about one confirmed difference between two
+SYSTEM = """detailed thinking off
+
+You write three short paragraphs about one confirmed difference between two
 European motor-insurance policies. You are a translator of findings, not an analyst.
 
 You receive the difference as settled fact. Do not re-open it, re-rank it, or question it.
@@ -35,6 +43,7 @@ Hard rules:
 - No hedging filler, no apologies, no "it is important to note".
 - Currency as given. Never invent a figure that is not in the input.
 - Address the reader as "you". Never "the user", never the third person.
+- Do not reason before answering. Emit the JSON object directly.
 - The input contains a field called `direction`, computed by ordinary code from the two
   documents. It is not an opinion and you may not contradict it. If it says a figure rose,
   every sentence you write must agree that it rose. A model that described an €810 premium
@@ -129,7 +138,7 @@ def explain_one(w: Weighted, profile_text: str, *, model: str = MODEL_EXPLAIN) -
         "user_circumstances": profile_text,
     }
     raw = complete_json(SYSTEM, json.dumps(payload, ensure_ascii=False, default=str),
-                        model=model, max_tokens=900)
+                        model=model, max_tokens=EXPLAIN_TOKENS)
     return Explanation(
         key=d.key,
         fact=raw.get("fact", ""),
@@ -138,7 +147,9 @@ def explain_one(w: Weighted, profile_text: str, *, model: str = MODEL_EXPLAIN) -
     )
 
 
-ACTIONS_SYSTEM = """You write the questions a consumer should ask their insurer before
+ACTIONS_SYSTEM = """detailed thinking off
+
+You write the questions a consumer should ask their insurer before
 renewing or switching. Input is a list of differences that are unresolved or material.
 
 Return JSON: {"actions":[{"question":"...","why":"..."}]}
@@ -146,7 +157,8 @@ Return JSON: {"actions":[{"question":"...","why":"..."}]}
 At most five. Ordered by how much they would change the decision.
 Every question must trace to a specific unresolved or material item in the input —
 never a generic insurance tip. `why` names the gap in one sentence.
-Never tell the user what to decide."""
+Never tell the user what to decide.
+Do not reason before answering. Emit the JSON object directly."""
 
 
 def actions(weighted: list[Weighted], profile_text: str, *, model: str = MODEL_EXPLAIN) -> list[dict]:
@@ -161,6 +173,6 @@ def actions(weighted: list[Weighted], profile_text: str, *, model: str = MODEL_E
         ACTIONS_SYSTEM,
         json.dumps({"differences": items, "user_circumstances": profile_text},
                    ensure_ascii=False, default=str),
-        model=model, max_tokens=900,
+        model=model, max_tokens=ACTIONS_TOKENS,
     )
     return raw.get("actions", [])[:5]

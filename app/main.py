@@ -202,18 +202,28 @@ async def compare_endpoint(
 
     sem = asyncio.Semaphore(EXPLAIN_CONCURRENCY)
 
+    def _why(exc: Exception) -> str:
+        """ModelOutputError carries the excerpt, the break position and the token count —
+        the whole point of raising it. Recording only the class name threw that away and
+        left us guessing at a failure that had already explained itself."""
+        if isinstance(exc, ModelOutputError):
+            return (f"{exc.model} returned unusable JSON "
+                    f"(break at char {exc.position} of {exc.raw_chars}): "
+                    f"…{exc.excerpt[-160:]}")
+        return f"{exc.__class__.__name__}: {exc}"
+
     async def _explain(w):
         async with sem:
             try:
                 return await asyncio.to_thread(explain_one, w, ptext), None
             except Exception as exc:      # an explanation failure must not lose the finding
-                return None, f"explanation unavailable: {exc.__class__.__name__}"
+                return None, f"explanation unavailable — {_why(exc)}"
 
     async def _actions():
         try:
             return await asyncio.to_thread(actions, weighted, ptext), None
         except Exception as exc:          # nor may it lose the whole run
-            return [], f"actions unavailable: {exc.__class__.__name__}"
+            return [], f"actions unavailable — {_why(exc)}"
 
     # The action list depends on the findings, not on their explanations, so it is
     # computed alongside them rather than after them.
