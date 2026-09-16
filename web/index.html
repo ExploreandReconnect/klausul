@@ -272,13 +272,8 @@ ol.q2 .why{grid-column:2;font-size:15.5px;color:var(--ink-3);line-height:1.5;mar
    they have been shown anything — which is what happened when the buttons simply
    inherited their place from the left-hand column. */
 .hero{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.86fr);gap:0 46px;
-  align-items:start;grid-template-areas:"claim evidence" "action evidence"}
-.hero-l{grid-area:claim}
-.hero-r{grid-area:evidence}
-.hero .choices{grid-area:action}
-@media (max-width:900px){
-  .hero{grid-template-columns:1fr;gap:0;grid-template-areas:"claim" "evidence" "action"}
-}
+  align-items:start}
+@media (max-width:900px){.hero{grid-template-columns:1fr;gap:0}}
 .hero-r{border-left:1px solid var(--rule);padding-left:34px;margin-top:6px}
 @media (max-width:900px){.hero-r{border-left:0;padding-left:0;margin-top:30px;
   border-top:1px solid var(--rule);padding-top:22px}}
@@ -467,6 +462,8 @@ legend{font-size:13px;letter-spacing:.14em;text-transform:uppercase;font-weight:
   .choice .go{font-size:14px;margin-top:11px}
   .choice .n{margin-bottom:8px}
 }
+.wide .foot{max-width:none;display:grid;grid-template-columns:1fr 1fr;gap:0 46px}
+@media (max-width:760px){.wide .foot{grid-template-columns:1fr;gap:18px}}
 .hero-r .tryit{font-size:14.5px;margin-top:16px;color:var(--ink-2);line-height:1.5}
 .hero-r .tryit button{font-size:14.5px}
 .mkts{margin-top:22px;padding-top:16px;border-top:1px solid var(--rule);
@@ -516,21 +513,6 @@ legend{font-size:13px;letter-spacing:.14em;text-transform:uppercase;font-weight:
         </ul>
       </div>
 
-      <div class="choices">
-        <button class="choice" type="button" onclick="choose('a')">
-          <span class="n">A</span>
-          <h3>My insurance was renewed</h3>
-          <p>Last year's documents, and the renewal you have just been sent.</p>
-          <span class="go">See what changed →</span>
-        </button>
-        <button class="choice" type="button" onclick="choose('b')">
-          <span class="n">B</span>
-          <h3>I have another offer</h3>
-          <p>The policy you hold today, and the offer you are considering.</p>
-          <span class="go">See what you would carry →</span>
-        </button>
-      </div>
-
       <div class="hero-r">
         <div class="mini" id="m-panel">
           <div class="cap2 fade" id="m-cap">What moved</div>
@@ -572,19 +554,43 @@ legend{font-size:13px;letter-spacing:.14em;text-transform:uppercase;font-weight:
       </div>
     </div>
 
+    <!-- Full width, below both columns. Inside the hero grid this band was 571px
+         wide with 700px of empty page beside it, and it took with it the one strong
+         horizontal rule the composition was resting on. -->
+    <div class="choices">
+        <button class="choice" type="button" onclick="choose('a')">
+          <span class="n">A</span>
+          <h3>My insurance was renewed</h3>
+          <p>Last year's documents, and the renewal you have just been sent.</p>
+          <span class="go">See what changed →</span>
+        </button>
+        <button class="choice" type="button" onclick="choose('b')">
+          <span class="n">B</span>
+          <h3>I have another offer</h3>
+          <p>The policy you hold today, and the offer you are considering.</p>
+          <span class="go">See what you would carry →</span>
+        </button>
+    </div>
+
+
 
 
     <p class="h2sub" id="apinote" style="margin-top:34px"></p>
 
     <div class="foot" style="margin-top:34px">
-      <b>How this works.</b> An NVIDIA Nemotron model on Nebius Token Factory extracts every
-      field with a verbatim quote, a page number and a confidence score.
-      <b>It is never asked which policy is better</b> — ordinary code does the comparison, so
-      every difference shown came from your documents. <b>An absence is drawn as an absence.</b><br><br>
-      Your documents are read in memory to answer one request and are not stored.
-      Fields follow the Insurance Product Information Document structure in Commission
-      Implementing Regulation (EU) 2017/1469, under the Insurance Distribution Directive
-      (EU) 2016/97. MIT licensed.
+      <div>
+        <b>How this works.</b> An NVIDIA Nemotron model on Nebius Token Factory extracts every
+        field with a verbatim quote, a page number and a confidence score.
+        <b>It is never asked which policy is better</b> — ordinary code does the comparison, so
+        every difference shown came from your documents.
+        <b>An absence is drawn as an absence.</b>
+      </div>
+      <div>
+        Your documents are read in memory to answer one request and are not stored.
+        Fields follow the Insurance Product Information Document structure in Commission
+        Implementing Regulation (EU) 2017/1469, under the Insurance Distribution Directive
+        (EU) 2016/97. MIT licensed.
+      </div>
     </div>
   </section>
 
