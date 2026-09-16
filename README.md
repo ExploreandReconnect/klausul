@@ -122,7 +122,7 @@ Configuration lives in `.env`:
 NEBIUS_API_KEY=...
 NEBIUS_BASE_URL=https://api.tokenfactory.nebius.com/v1
 KLAUSUL_MODEL_EXTRACT=nvidia/nemotron-3-super-120b-a12b
-KLAUSUL_MODEL_EXPLAIN=nvidia/nemotron-3-nano-30b-a3b
+KLAUSUL_MODEL_EXPLAIN=nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B
 ```
 
 ---

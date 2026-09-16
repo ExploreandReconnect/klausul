@@ -24,6 +24,6 @@ services:
       - key: KLAUSUL_MODEL_EXTRACT
         value: nvidia/nemotron-3-super-120b-a12b
       - key: KLAUSUL_MODEL_EXPLAIN
-        value: nvidia/nemotron-3-nano-30b-a3b
+        value: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B
       - key: KLAUSUL_ALLOWED_ORIGINS
         value: "*"                    # tighten to your Pages URL once you have it

@@ -26,6 +26,7 @@ from fastapi.staticfiles import StaticFiles
 from .compare import compare
 from .explain import actions, explain_one
 from .extract import extract
+from .nebius import ModelOutputError
 from .relevance import Profile, weigh
 from .vocab import NUMBER_FORMATS
 
@@ -147,6 +148,18 @@ async def compare_endpoint(
                 asyncio.to_thread(extract, paths[0], market=market),
                 asyncio.to_thread(extract, paths[1], market=market),
             )
+        except ModelOutputError as e:
+            # The model misbehaved. Say so, and show what it actually emitted — this
+            # product's whole claim is that a failure is visible rather than plausible,
+            # which has to hold for its own failures too.
+            raise HTTPException(502, {
+                "error": "The extraction model did not return usable JSON.",
+                "model": e.model,
+                "detail": str(e),
+                "position": e.position,
+                "response_chars": e.raw_chars,
+                "excerpt": e.excerpt,
+            }) from e
         except ValueError as e:
             # read_pdf raises this for a PDF with no text layer
             raise HTTPException(422, str(e)) from e

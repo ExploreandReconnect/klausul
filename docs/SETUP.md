@@ -33,7 +33,7 @@ already provisioned rather than queuing for a code.
 
 ```
 KLAUSUL_MODEL_EXTRACT=nvidia/nemotron-3-super-120b-a12b
-KLAUSUL_MODEL_EXPLAIN=nvidia/nemotron-3-nano-30b-a3b
+KLAUSUL_MODEL_EXPLAIN=nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B
 ```
 
 Nemotron 3 Nano Omni is the multimodal one — that is the route for scanned PDFs if you
