@@ -10,6 +10,7 @@ cross-site, which is why CORS is configured rather than assumed.
 """
 from __future__ import annotations
 
+import asyncio
 import os
 import shutil
 import tempfile
@@ -47,6 +48,13 @@ app.add_middleware(
 WEB = Path(__file__).resolve().parent.parent / "web"
 DEMO = Path(__file__).resolve().parent.parent / "demo"
 MAX_BYTES = 12 * 1024 * 1024          # an IPID is two A4 pages; 12 MB is generous
+
+# Every call into the model is synchronous (the openai SDK's blocking client), so it
+# must run in a worker thread. Calling it directly from an `async def` handler blocks
+# uvicorn's event loop for the whole run, which stops /health answering, which makes
+# the platform conclude the service is dead and restart it mid-request. That is not a
+# theoretical risk: it is what happened on the first live run.
+EXPLAIN_CONCURRENCY = 4               # Token Factory is fine with this; be a good citizen
 
 if WEB.is_dir():
     app.mount("/static", StaticFiles(directory=WEB), name="static")
@@ -133,8 +141,12 @@ async def compare_endpoint(
 
         t = time.perf_counter()
         try:
-            a = extract(paths[0], market=market)
-            b = extract(paths[1], market=market)
+            # Off the event loop, and both documents at once. They are independent,
+            # so running them in sequence only ever bought us a longer wall clock.
+            a, b = await asyncio.gather(
+                asyncio.to_thread(extract, paths[0], market=market),
+                asyncio.to_thread(extract, paths[1], market=market),
+            )
         except ValueError as e:
             # read_pdf raises this for a PDF with no text layer
             raise HTTPException(422, str(e)) from e
@@ -150,13 +162,30 @@ async def compare_endpoint(
 
     ptext = _profile_text(profile)
     t = time.perf_counter()
-    explained = []
-    for w in weighted:
+
+    sem = asyncio.Semaphore(EXPLAIN_CONCURRENCY)
+
+    async def _explain(w):
+        async with sem:
+            try:
+                return await asyncio.to_thread(explain_one, w, ptext), None
+            except Exception as exc:      # an explanation failure must not lose the finding
+                return None, f"explanation unavailable: {exc.__class__.__name__}"
+
+    async def _actions():
         try:
-            e = explain_one(w, ptext)
-            note = None
-        except Exception as exc:          # an explanation failure must not lose the finding
-            e, note = None, f"explanation unavailable: {exc.__class__.__name__}"
+            return await asyncio.to_thread(actions, weighted, ptext), None
+        except Exception as exc:          # nor may it lose the whole run
+            return [], f"actions unavailable: {exc.__class__.__name__}"
+
+    # The action list depends on the findings, not on their explanations, so it is
+    # computed alongside them rather than after them.
+    *explanations, (acts, acts_note) = await asyncio.gather(
+        *(_explain(w) for w in weighted), _actions()
+    )
+
+    explained = []
+    for w, (e, note) in zip(weighted, explanations):
         explained.append({
             "key": w.difference.key,
             "label": w.difference.label,
@@ -183,7 +212,8 @@ async def compare_endpoint(
         ],
         "counts": result.counts,
         "differences": explained,
-        "actions": actions(weighted, ptext),
+        "actions": acts,
+        "actions_note": acts_note,
         "uncertainties": a.uncertainties + b.uncertainties,
         "timings_s": {k: round(v, 2) for k, v in timings.items()},
         "total_s": round(time.perf_counter() - t0, 2),
