@@ -276,7 +276,29 @@ ol.q2 .why{grid-column:2;font-size:15.5px;color:var(--ink-3);line-height:1.5;mar
 .mini .sg.a{background:var(--ink);left:0}
 .mini .sg.b{background:var(--added);
   background-image:repeating-linear-gradient(135deg,rgba(255,255,255,.34) 0 3px,transparent 3px 7px)}
+/* Same grammar, other direction: a solid green band is ground the insurer took back.
+   Hatched means newly yours, solid green means returned — so the two are never confused
+   at a glance, which is the whole point of having a grammar rather than a palette. */
+.mini .sg.b.ret{background:var(--returned);background-image:none}
+.mini .sg,.mini .in,.mini .gh{transition:width 640ms cubic-bezier(.2,.75,.25,1),
+  left 640ms cubic-bezier(.2,.75,.25,1), background-color 400ms ease}
+.mini .dl2.ret{color:var(--returned)}
+/* On the days row the hatched band runs to the end of the track, so its label has
+   nowhere outside to sit. It goes inside, in paper — the same move the result view makes. */
+.mini .dl2.inbar{color:var(--paper)}
+.mini .in.out{color:var(--ink-2)}                    /* label sits outside a short dark bar */
+.mini .fade{transition:opacity 260ms ease}
+.mini .fade.off{opacity:0}
+.mini .dots{display:flex;gap:6px;margin-top:14px}
+.mini .dots i{width:16px;height:2px;background:var(--rule);display:block;
+  transition:background 300ms ease}
+.mini .dots i.on{background:var(--pine)}
 .mini .gh{position:absolute;top:-5px;bottom:-5px;border-left:2px dotted var(--ink-3)}
+.mini .gh b{position:absolute;top:-15px;left:0;transform:translateX(-50%);font-size:9.5px;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);white-space:nowrap}
+/* A ghost line sitting at the end of the track would centre its label past the edge of
+   the page — 8px of horizontal scroll on a phone. It hangs to the left instead. */
+.mini .gh.end b{transform:translateX(-100%)}
 .mini .in{position:absolute;top:50%;left:9px;transform:translateY(-50%);font-size:12.5px;
   font-weight:600;color:var(--paper);font-variant-numeric:tabular-nums}
 .mini .dl2{position:absolute;top:50%;transform:translateY(-50%);font-size:12px;font-weight:700;
@@ -421,17 +443,18 @@ legend{font-size:13px;letter-spacing:.14em;text-transform:uppercase;font-weight:
 
     <div class="demo">
       <div class="mini">
-        <div class="cap2">What moved</div>
-        <div class="scen">Your car is stolen · theft excess</div>
+        <div class="cap2 fade" id="m-cap">What moved</div>
+        <div class="scen fade" id="m-scen">Your car is stolen · theft excess</div>
         <div class="trk">
           <span class="sg a" id="m-a" style="width:62.5%"></span>
           <span class="sg b" id="m-b" style="left:37.5%;width:25%"></span>
-          <span class="gh" style="left:37.5%"></span>
-          <span class="in">€500</span>
+          <span class="gh" id="m-gh" style="left:37.5%"><b id="m-gl">last year</b></span>
+          <span class="in" id="m-in">€500</span>
           <span class="dl2" id="m-d" style="left:calc(62.5% + 9px)">+€200 yours</span>
         </div>
-        <p class="says">The dark part is what <b>you</b> carry. The dotted line is where it sat
-          last year. Every renewal is a line that moved without you.</p>
+        <p class="says fade" id="m-says">The dark part is what <b>you</b> carry. The dotted line
+          is where it sat last year. Every renewal is a line that moved without you.</p>
+        <div class="dots" id="m-dots" aria-hidden="true"></div>
       </div>
       <div class="mini">
         <div class="cap2">What could not be established</div>
@@ -894,15 +917,107 @@ const MARKETS = {DK:'Denmark', DE:'Germany', IE:'Ireland', FR:'France', NL:'Neth
 const PROFILE = {annual_km:null, drives_abroad:null, parking:null, vehicle_dependency:null};
 const FILES = {current:null, other:null};
 
-function animateEntry(){
-  if (reduced()) return;
-  const a = document.getElementById('m-a'), b = document.getElementById('m-b'),
-        d = document.getElementById('m-d');
+/* Three rows from the worked example below, cycled. Every figure here is one the
+   cached run actually produced — the theft excess, the glass excess and the
+   replacement-vehicle cap. Nothing on this page is a number someone made up to make
+   a bar look good, which is the only version of this animation worth having. */
+const ENTRY_SCENES = [
+  {cap:'What moved', when:'Your car is stolen · theft excess',
+   max:800, was:300, now:500, fmt:eur,
+   says:'The dark part is what <b>you</b> carry. The dotted line is where it sat last year. '
+      + 'Every renewal is a line that moved without you.'},
+  {cap:'What moved back', when:'A stone hits your windscreen · glass excess',
+   max:800, was:150, now:100, fmt:eur,
+   says:'Not everything moves against you. This one came back €50 — <b>drawn the same way, '
+      + 'in the other direction</b>, so you can tell which is which without reading a word.'},
+  {cap:'What moved', when:'Your car is in the workshop · replacement vehicle',
+   max:30, was:30, now:14, fmt: n => n + ' days', theirs:true,
+   says:'Thirty days last year, fourteen now. <b>The sixteen days in between are yours to '
+      + 'arrange</b> — the same line, measured in time instead of money.'},
+];
+
+let ENTRY_I = 0, ENTRY_TIMER = null, ENTRY_COUNT = null;
+
+/* Count the figure up rather than swapping it. The number moving is what makes the bar
+   read as a quantity instead of a shape. */
+function countTo(el, from, to, fmt, ms){
+  cancelAnimationFrame(ENTRY_COUNT);
+  const t0 = performance.now();
+  const step = now => {
+    const k = Math.min(1, (now - t0) / ms);
+    const e = 1 - Math.pow(1 - k, 3);
+    el.textContent = fmt(Math.round(from + (to - from) * e));
+    if (k < 1) ENTRY_COUNT = requestAnimationFrame(step);
+  };
+  ENTRY_COUNT = requestAnimationFrame(step);
+}
+
+function entryScene(i, instant){
+  const g = id => document.getElementById(id);
+  const a = g('m-a'), b = g('m-b'), gh = g('m-gh'), inn = g('m-in'), d = g('m-d');
   if (!a) return;
-  a.style.width = '37.5%'; b.style.width = '0'; d.style.left = 'calc(37.5% + 9px)';
-  requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(() => {
-    a.style.width = '62.5%'; b.style.width = '25%'; d.style.left = 'calc(62.5% + 9px)';
-  }, 620)));
+  const s = ENTRY_SCENES[i];
+  const P = v => (v / s.max * 100) + '%';
+  const worse = s.theirs ? true : s.now > s.was;      // did the line move toward you?
+  const delta = Math.abs(s.now - s.was);
+
+  g('m-cap').textContent = s.cap;
+  g('m-scen').textContent = s.when;
+  g('m-says').innerHTML = s.says;
+  g('m-dots').innerHTML = ENTRY_SCENES.map((_, k) =>
+    `<i class="${k === i ? 'on' : ''}"></i>`).join('');
+
+  if (s.theirs){
+    // Days: the insurer covers the first stretch, you carry the rest.
+    a.style.width = '0';
+    b.style.left = P(s.now); b.style.width = P(s.max - s.now);
+    b.className = 'sg b';
+    gh.style.left = P(s.was); g('m-gl').textContent = 'last year';
+    gh.classList.toggle('end', s.was / s.max >= .96);
+    inn.classList.add('out'); inn.style.left = 'calc(' + P(s.now) + ' - 74px)';
+    d.className = 'dl2 inbar'; d.style.left = 'calc(' + P(s.now) + ' + 11px)';
+    d.textContent = (s.max - s.now) + ' days yours';
+  } else {
+    a.style.width = P(s.now);
+    b.className = 'sg b' + (worse ? '' : ' ret');
+    b.style.left = P(Math.min(s.was, s.now));
+    b.style.width = P(delta);
+    gh.style.left = P(s.was); g('m-gl').textContent = 'last year';
+    gh.classList.toggle('end', s.was / s.max >= .96);
+    inn.classList.remove('out'); inn.style.left = '9px';
+    d.className = 'dl2' + (worse ? '' : ' ret');
+    d.style.left = 'calc(' + P(Math.max(s.was, s.now)) + ' + 9px)';
+    d.textContent = (worse ? '+' : '−') + eur(delta) + ' yours';
+  }
+
+  if (instant || reduced()) inn.textContent = s.fmt(s.theirs ? s.now : s.now);
+  else countTo(inn, s.was, s.now, s.fmt, 640);
+}
+
+function animateEntry(){
+  clearInterval(ENTRY_TIMER);
+  if (!document.getElementById('m-a')) return;
+  if (reduced()){ entryScene(0, true); return; }
+
+  ENTRY_I = 0;
+  entryScene(0, true);
+  // One beat from a standing start, so the first thing a visitor sees is a line moving.
+  const a = document.getElementById('m-a'), b = document.getElementById('m-b');
+  a.style.width = (ENTRY_SCENES[0].was / ENTRY_SCENES[0].max * 100) + '%';
+  b.style.width = '0';
+  document.getElementById('m-in').textContent = eur(ENTRY_SCENES[0].was);
+  requestAnimationFrame(() => requestAnimationFrame(() =>
+    setTimeout(() => entryScene(0), 520)));
+
+  ENTRY_TIMER = setInterval(() => {
+    const fade = document.querySelectorAll('.mini .fade');
+    fade.forEach(el => el.classList.add('off'));
+    setTimeout(() => {
+      ENTRY_I = (ENTRY_I + 1) % ENTRY_SCENES.length;
+      entryScene(ENTRY_I);
+      fade.forEach(el => el.classList.remove('off'));
+    }, 260);
+  }, 4600);
 }
 
 function show(v){
@@ -911,6 +1026,7 @@ function show(v){
     document.getElementById('v-' + x).hidden = x !== v);
   document.getElementById('modebar').hidden = v !== 'result';
   if (v === 'entry') animateEntry();
+  else { clearInterval(ENTRY_TIMER); cancelAnimationFrame(ENTRY_COUNT); }
   window.scrollTo({top:0, behavior: reduced() ? 'auto' : 'smooth'});
 }
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
