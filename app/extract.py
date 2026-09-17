@@ -110,12 +110,17 @@ def read_pdf(path: str | Path) -> str:
 
 
 def _coerce(raw: dict, doc_name: str) -> Field:
+    # The document name is set on EVERY path out of here, including the two failure ones.
+    # It used to be attached only to fields that parsed, so a `not_found` had no document
+    # on it — and once absence.py began writing notes about specific documents, those
+    # notes came out as "not absent from this document" with no name in them.
     if not isinstance(raw, dict):
-        return Field(status=Status.NOT_FOUND)
+        return Field(status=Status.NOT_FOUND, source_document=doc_name)
     try:
         f = Field(**{k: v for k, v in raw.items() if k in Field.model_fields})
     except ValidationError:
-        return Field(status=Status.NOT_FOUND, note="rejected by schema validation")
+        return Field(status=Status.NOT_FOUND, source_document=doc_name,
+                     note="rejected by schema validation")
     f.source_document = doc_name
     # A value with no quote behind it is not evidence. Demote it.
     if f.status in (Status.EXPLICIT, Status.INFERRED) and not f.source_text:

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Klausul — know what changed before you renew</title>
 <meta name="description" content="Upload your EU motor insurance documents and see what changed, with the source of every finding. Open source, MIT.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%226%22%20fill%3D%22%230f2e23%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%2211%22%20width%3D%2211%22%20height%3D%224%22%20rx%3D%221%22%20fill%3D%22%23f6f4ee%22%2F%3E%3Crect%20x%3D%227%22%20y%3D%2218%22%20width%3D%2218%22%20height%3D%224%22%20rx%3D%221%22%20fill%3D%22none%22%20stroke%3D%22%23c8a24a%22%20stroke-width%3D%221.6%22%20stroke-dasharray%3D%223%202%22%2F%3E%3C%2Fsvg%3E">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..700&display=swap">
 <style>
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -123,6 +124,21 @@ h2{font-size:13px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;
   white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--paper)}
 .delta{position:absolute;top:50%;transform:translateY(-50%);font-size:13px;font-weight:700;
   white-space:nowrap;font-variant-numeric:tabular-nums;transition:left var(--t)}
+/* When there is no quantity, show the language.
+   The dashed box said "Cannot be drawn" seventeen times on a real Danish pair — true,
+   identical, and useless. Every one of those rows has a verbatim line behind it, which
+   is the finding: the document names the cover and states no number. The rule this
+   follows is the one that governs every mark on this page — borrow a visual device only
+   when the data has the structure the device implies. A bar implies a quantity. */
+.qline{position:absolute;inset:0;display:flex;align-items:center;gap:10px;
+  padding:0 13px;overflow:hidden}
+.qline i{font-style:normal;font-size:13.5px;line-height:1.3;color:var(--ink-2);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.qline i b{font-weight:700;color:var(--unknown);font-style:normal}
+.qline s{text-decoration:none;font-size:10px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--ink-3);font-weight:700;white-space:nowrap;flex:0 0 auto}
+@media (max-width:680px){.qline i{white-space:normal;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}.qline s{display:none}}
 .none-lab{position:absolute;top:50%;left:13px;transform:translateY(-50%);font-size:14px;
   color:var(--unknown);font-weight:700}
 .cap{display:none;grid-column:1/-1;font-size:15px;color:var(--ink-2);line-height:1.45;
@@ -303,6 +319,9 @@ ol.q2 .why{grid-column:2;font-size:15.5px;color:var(--ink-3);line-height:1.5;mar
 .mini .sg,.mini .in,.mini .gh{transition:width 640ms cubic-bezier(.2,.75,.25,1),
   left 640ms cubic-bezier(.2,.75,.25,1), background-color 400ms ease}
 .mini .dl2.ret{color:var(--returned)}
+/* Nothing moved — one document states a figure, the other does not. The label is a fact
+   about the OTHER document, so it takes the unknown ink, not the red of new liability. */
+.mini .dl2.na{color:var(--unknown);font-weight:600}
 /* On the days row the hatched band runs to the end of the track, so its label has
    nowhere outside to sit. It goes inside, in paper — the same move the result view makes. */
 .mini .dl2.inbar{color:var(--paper)}
@@ -554,10 +573,12 @@ legend{font-size:13px;letter-spacing:.14em;text-transform:uppercase;font-weight:
           <p class="says fade" id="m-says">The dark part is what <b>you</b> carry. The dotted line
             is where it sat last year. Every renewal is a line that moved without you.</p>
           <div class="dots" id="m-dots" aria-hidden="true"></div>
-          <p class="exlabel">Real output from the worked example — not an illustration of one.</p>
+          <p class="exlabel">Real output from the recorded runs — not an illustration of one.</p>
           <p class="tryit">No documents to hand?
             <button type="button" onclick="seeExample('a')">See the whole worked example</button>
-            — two invented Danish policies, a full cached run, every figure traceable.</p>
+            — two recorded runs over four published IPIDs: a Danish renewal pair four years
+            apart, and two Irish insurers side by side. Every figure traceable to a line in
+            a PDF you can download.</p>
 
           <!-- "Is this for me?" is the question a cold visitor asks second, and the page
                had no answer to it. The market list is not marketing: the number convention
@@ -757,142 +778,59 @@ legend{font-size:13px;letter-spacing:.14em;text-transform:uppercase;font-weight:
 <script src="config.js"></script>
 <script>
 
-const MAX_EUR = 800, MAX_DAY = 30;
 const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-const eur = n => '€' + n.toLocaleString('en-GB');
+const eur = n => '\u20ac' + n.toLocaleString('en-GB');
 const pc  = (v,max) => v/max*100;
 
-const Q = (yr,t,doc,pg,sec,c,miss) => ({yr,t,doc,pg,sec,c,miss});
+/* The word the absence check matched on, bolded inside the line it was found in — so the
+   reader can see WHY this counts as the document discussing the subject, rather than
+   taking the verdict on trust. Escaped first; the needle is matched on the escaped text. */
+function hl(line, term){
+  const t = esc(String(line || ''));
+  if (!term) return t;
+  const n = esc(String(term).replace(/[?!.,;:]+$/,''));
+  const i = t.toLowerCase().indexOf(n.toLowerCase());
+  return i < 0 ? t : t.slice(0,i) + '<b>' + t.slice(i, i+n.length) + '</b>' + t.slice(i+n.length);
+}
 
-const MODES = {
- a:{
-  meta:'Nordvest Forsikring · Bil Plus · NV-4471<br>Two documents · 41 fields · Nemotron on Nebius Token Factory',
-  eyebrow:'Your renewal · 2025 → 2026',
-  h1:'The line between your money and theirs has moved.',
-  lede:"Your premium rose €90. That's on page one. <b>This is what isn't: how much you now carry yourself.</b>",
-  sub:'Four things that could happen to your car. Tap a row for the wording it came from.',
-  ghostLabel:'2025',
-  keyGhost:'Last year',
-  tally:[['bad','2','moved against you'],['good','1','moved for you'],['na','1','could not be drawn']],
-  because:'You drive 25,000 km a year, park on the street and cross the border often. <b>That is why theft and the undrawn one are at the top.</b>',
-  holeTitle:'The one we could not draw',
-  holeSub:'This is the finding, not a gap in it.',
-  holeH3:'Roadside assistance in the rest of Europe',
-  holeP:"2025 says it's included. 2026 doesn't mention it — not to include it, not to remove it. <b>An absent clause is not a removed benefit.</b> It may have moved to a document you weren't sent.",
-  pages:[
-   {ttl:'Bilforsikring 2025', pg:'p. 4 of 9', lines:[
-     ['Brand, lynnedslag og eksplosion.',0],['Glasskade, herunder forrude.',0],
-     ['Vejhjælp i Europa er omfattet af dækningen.',1],['Erstatningsbil i op til 30 dage.',0]]},
-   {ttl:'Fornyelse 2026', pg:'p. 4 of 11', lines:[
-     ['Brand, lynnedslag og eksplosion.',0],['Glasskade, herunder forrude.',0]],
-    gap:['Nothing here.','11 pages searched. No vejhjælp, assistance or Europa anywhere.'],
-    after:['Erstatningsbil i op til 14 dage.',0]}],
-  priceTitle:'What they charge',
-  priceSub:"Kept apart from the picture above, because it isn't what you carry.",
-  priceL:'Annual premium. <b>No reason given</b> — no claim, no new car, no new address.',
-  priceN:'<s>€720</s>€810',
-  qTitle:'Three questions before you renew',
-  qSub:'Only from what your documents leave open. Nothing generic.',
-  questions:[
-   ['Is European roadside assistance still included?','In your 2025 documents. Nowhere in the 2026 ones.'],
-   ['What happens from day 15 of a repair?','Capped at 14 days. The documents stop there.'],
-   ['Why did the theft excess rise from €300 to €500?','The largest move against you. No reason given.']],
-  cta:'Send these three questions'
- },
+/* THE EXAMPLE IS A RECORDING, NOT A DRAWING.
+ *
+ * What stood here was two hand-authored objects — a Danish renewal from "Nordvest
+ * Forsikring" and an offer from "Meridian Direkt" — with figures, quotes and page
+ * numbers written to make the page look good. They described a document format that
+ * does not exist: across fourteen published IPIDs, exactly one states an excess amount,
+ * and the Danish ones contain no money figures at all.
+ *
+ * They are replaced by two real runs of this API over four published IPIDs, saved
+ * verbatim. The page replays them through buildLive() — the SAME function a live upload
+ * goes through, not a parallel path — so the example cannot drift from the product, and
+ * demonstrating the product means demonstrating what it really does.
+ *
+ *   a  DK  Tryg Forsikring 2022 vs 2024. Two renewals of one policy, four years apart.
+ *   b  IE  Aviva MotorCare vs AIG. Two insurers, one market.
+ *
+ * Both files sit beside this page. Open them.
+ */
+const DEMO_SRC = {a: 'demo-dk.json', b: 'demo-ie.json'};
+const DEMO = {a: null, b: null};        // the raw responses
+const DEMO_PAGE = {a: null, b: null};   // ...built, once, by buildLive
 
- b:{
-  meta:'Nordvest Forsikring NV-4471 vs Meridian Direkt MD-88210<br>Two documents, two languages · 39 fields · Nemotron on Nebius Token Factory',
-  eyebrow:'Your policy · vs · Meridian Direkt',
-  h1:'Cheaper, until the first time you need it.',
-  lede:'The offer saves €126 a year. <b>This is what you would carry instead.</b>',
-  sub:'The dotted line is your policy today. The solid bar is the offer. Tap a row for the wording.',
-  ghostLabel:'now',
-  keyGhost:'Your policy now',
-  tally:[['good','−€126','a year, if nothing happens'],['bad','+€300','if you cause one collision'],
-         ['na','2.4 yrs','between claims to break even']],
-  because:'At 25,000 km a year, one at-fault claim more often than every 2.4 years and the offer costs you money. <b>The documents cannot tell you your rate. Only you can.</b>',
-  holeTitle:'The one we could not draw',
-  holeSub:'Unresolved on both sides — so it counts for neither.',
-  holeH3:'Roadside assistance in the rest of Europe',
-  holeP:"Your policy doesn't mention it. The offer points at a service annex that was never uploaded. <b>A benefit neither document describes cannot be compared.</b> Ask for the Leistungsübersicht and this row resolves itself.",
-  pages:[
-   {ttl:'Fornyelse 2026', pg:'11 pages', lines:[
-     ['Brand, lynnedslag og eksplosion.',0],['Glasskade, herunder forrude.',0]],
-    gap:['Nothing here.','11 pages searched. No vejhjælp, assistance or Europa anywhere.'],
-    after:['Erstatningsbil i op til 14 dage.',0]},
-   {ttl:'Angebot Meridian', pg:'S. 5 von 6', lines:[
-     ['Ein Schutzbrief kann zum Vertrag hinzugebucht werden.',0],
-     ['Einzelheiten zum Schutzbrief entnehmen Sie bitte der',1],['gesonderten Leistungsübersicht.',1]],
-    gap:['Not uploaded.','The offer refers to a second document you do not have.'],
-    after:['Es gelten die dort genannten Leistungsgrenzen.',0]}],
-  priceTitle:'What they charge',
-  priceSub:'The saving is real. What it costs you sits above.',
-  priceL:'Annual premium, year one. <b>Year two is not in the documents.</b>',
-  priceN:'<s>€810</s>€684',
-  catch:'<b>The catch.</b> Your no-claims record transfers, but two steps lower. The €684 already reflects that; the effect lands at the next renewal, and no figure is given.',
-  qTitle:'Four questions before you switch',
-  qSub:'Only from what the documents leave open or move against you.',
-  questions:[
-   ['Send me the Leistungsübersicht.','Roadside assistance is unresolved on both sides without it.'],
-   ['Can Switzerland and the UK be added?','Your cover includes both. The offer excludes both.'],
-   ['What is the year-two premium after the two-step reduction?','€684 is year one only.'],
-   ['Does the €0 glass excess apply to a replacement, or only a repair?','The clause says repair, then points at Ziffer 7.3.']],
-  cta:'Send these four questions'
- }
-};
+async function loadDemos(){
+  await Promise.all(Object.keys(DEMO_SRC).map(async k => {
+    try {
+      const r = await fetch(DEMO_SRC[k], {cache: 'no-cache'});
+      if (r.ok) DEMO[k] = await r.json();
+    } catch { /* the page still renders; seeExample says why it cannot */ }
+  }));
+}
 
-const ROWS = {
- a:{ money:[
-   {id:'theft', when:'Your car is stolen', field:'Theft excess', was:300, now:500, max:MAX_EUR,
-    quotes:[Q('2026','Selvrisiko ved tyveri og røveri: 500 EUR','Fornyelse_2026.pdf','p. 3','§ Selvrisiko',.97),
-            Q('2025','Selvrisiko ved tyveri og røveri: 300 EUR','Bilforsikring_2025.pdf','p. 3','§ Selvrisiko',.96)],
-    note:'You park on the street. That is the exposure this excess attaches to.'},
-   {id:'collision', when:'You cause a collision', field:'Collision excess', was:400, now:400, max:MAX_EUR,
-    quotes:[Q('2026','Selvrisiko ved kaskoskade: 400 EUR','Fornyelse_2026.pdf','p. 3','§ Selvrisiko',.98),
-            Q('2025','Selvrisiko ved kaskoskade: 400 EUR','Bilforsikring_2025.pdf','p. 3','§ Selvrisiko',.98)],
-    note:'Unchanged — and still the most you carry on any single event.'},
-   {id:'glass', when:'A stone hits your windscreen', field:'Glass excess', was:150, now:100, max:MAX_EUR,
-    quotes:[Q('2026','Selvrisiko ved glasskade: 100 EUR','Fornyelse_2026.pdf','p. 3','§ Selvrisiko',.98),
-            Q('2025','Selvrisiko ved glasskade: 150 EUR','Bilforsikring_2025.pdf','p. 3','§ Selvrisiko',.97)],
-    note:'A real improvement — worth far less to you than the roadside question.'},
-   {id:'roadside', when:'You break down in Germany', field:'Roadside assistance, Europe', unit:'NONE',
-    quotes:[Q('2025','Vejhjælp i Europa er omfattet af dækningen.','Bilforsikring_2025.pdf','p. 4','§ Vejhjælp',.95),
-            Q('2026','No matching clause. 11 pages searched — no vejhjælp, assistance or Europa.','Fornyelse_2026.pdf','11 pages','whole document',.46,true)],
-    note:'Low confidence by design: no quote can prove a silence. You drive abroad often — this is the phone call.'}],
-  time:[
-   {id:'workshop', when:'Your car is in the workshop', field:'Replacement vehicle', unit:'DAY',
-    max:MAX_DAY, theirsFirst:true, theirsNow:14, was:30, now:14,
-    quotes:[Q('2026','Der stilles erstatningsbil til rådighed i op til 14 dage pr. skadebegivenhed.','Fornyelse_2026.pdf','p. 6','§ Erstatningsbil',.94),
-            Q('2025','Der stilles erstatningsbil til rådighed i op til 30 dage pr. skadebegivenhed.','Bilforsikring_2025.pdf','p. 5','§ Erstatningsbil',.94)],
-    note:'You depend heavily on the car. A halved period costs you more than the €90.'}],
-  geo:null},
-
- b:{ money:[
-   {id:'bcollision', when:'You cause a collision', field:'Collision excess', was:400, now:700, max:MAX_EUR,
-    quotes:[Q('Offer','Selbstbeteiligung Vollkasko: 700 EUR je Schadenfall','Angebot_Meridian.pdf','S. 3','§ Selbstbeteiligung',.96),
-            Q('Now','Selvrisiko ved kaskoskade: 400 EUR','Fornyelse_2026.pdf','p. 3','§ Selvrisiko',.98)],
-    note:'One at-fault claim wipes out more than two years of the €126 saving.'},
-   {id:'btheft', when:'Your car is stolen', field:'Theft excess', was:500, now:500, max:MAX_EUR,
-    quotes:[Q('Offer','Selbstbeteiligung Teilkasko (Diebstahl): 500 EUR','Angebot_Meridian.pdf','S. 3','§ Selbstbeteiligung',.96),
-            Q('Now','Selvrisiko ved tyveri og røveri: 500 EUR','Fornyelse_2026.pdf','p. 3','§ Selvrisiko',.97)],
-    note:'Identical. Street parking makes it relevant to you — but it cannot help you choose.'},
-   {id:'bglass', when:'A stone hits your windscreen', field:'Glass excess', was:100, now:0, max:MAX_EUR,
-    conditional:'if repaired',
-    quotes:[Q('Offer','Glasbruch: keine Selbstbeteiligung bei Reparatur. Bei Austausch gelten die Bedingungen in Ziffer 7.3.','Angebot_Meridian.pdf','S. 3','§ Glasbruch',.89),
-            Q('Now','Selvrisiko ved glasskade: 100 EUR','Fornyelse_2026.pdf','p. 3','§ Selvrisiko',.98)],
-    note:'Free only for a repair. A full replacement falls under a clause that states no figure — drawn dashed for that reason.'},
-   {id:'broadside', when:'You break down in Germany', field:'Roadside assistance, Europe', unit:'NONE',
-    quotes:[Q('Now','No matching clause. 11 pages searched.','Fornyelse_2026.pdf','11 pages','whole document',.46,true),
-            Q('Offer','Einzelheiten zum Schutzbrief entnehmen Sie bitte der gesonderten Leistungsübersicht.','Angebot_Meridian.pdf','S. 5','§ Schutzbrief',.40)],
-    note:'Unresolved on both sides. It counts for neither until the annex arrives.'}],
-  time:null,
-  geo:{id:'bgeo', when:'You drive to Switzerland or the UK', field:'Where you are covered',
-    zones:[['EU / EEA',78,'theirs'],['Switzerland + UK',22,'yours']],
-    zonesNow:[['EU / EEA',78,'theirs'],['Switzerland + UK',22,'theirs']],
-    quotes:[Q('Offer','Geltungsbereich: Mitgliedstaaten des EWR. Schweiz und Vereinigtes Königreich sind nicht eingeschlossen.','Angebot_Meridian.pdf','S. 2','§ Geltungsbereich',.93),
-            Q('Now','Dækningen gælder i EU/EØS samt Schweiz og Storbritannien.','Fornyelse_2026.pdf','p. 5','§ Hvor er jeg dækket',.95)],
-    note:'Not an excess — no cover at all. A loss there is entirely yours, up to the value of the car.'}}
-};
+function demoPage(m){
+  if (DEMO_PAGE[m]) return DEMO_PAGE[m];
+  if (!DEMO[m]) return null;
+  DEMO_PAGE[m] = buildLive(DEMO[m]);
+  DEMO_PAGE[m].source = 'cached';
+  return DEMO_PAGE[m];
+}
 
 let mode = 'a';
 
@@ -904,8 +842,30 @@ const dayLoss = r => Math.max(0, dayWas(r) - r.theirsNow);
 
 /* ── marks ── */
 function bars(r, m){
-  if (r.unit === 'NONE')
-    return `<div class="none"></div><span class="none-lab">Cannot be drawn</span>`;
+  /* A value stated by ONE document is still a value. It used to be routed here as
+     "cannot be drawn" with everything else unresolved, so a real Aviva liability limit
+     of EUR 30,000,000 and a real EUR 300 excess were both drawn as empty boxes on a page
+     whose headline said nobody could confirm anything. The stated side is drawn; the
+     other side is named as not stating one. */
+  if (r.unit === 'ONE'){
+    const w = pc(r.val, r.max);
+    /* Solid, not hatched. `add` is the red hatch that means "newly yours" and `give` the
+       green that means "moved your way" — both are statements about MOVEMENT, and nothing
+       moved here: one document states a figure and the other says nothing. The mark for
+       a plain stated quantity is the plain stated bar. */
+    return `<div class="seg mine" data-from-w="0"
+                 style="left:0;width:${w}%${r.theirs ? ';background:var(--pine)' : ''}"></div>
+            <span class="tag" style="color:${w > 12 ? 'var(--paper)' : 'var(--ink)'}">${
+              r.fmt(r.val)}</span>
+            <span class="delta" style="left:auto;right:12px;color:var(--unknown)"
+              >${esc(r.otherName)} states none</span>`;
+  }
+  if (r.unit === 'NONE'){
+    const q = (r.quotes || []).find(x => x.t && x.t.length > 8);
+    if (q) return `<div class="none"></div>
+      <span class="qline"><i>${hl(q.t, r.term)}</i><s>${esc(q.doc || '')} ${esc(q.pg || '')}</s></span>`;
+    return `<div class="none"></div><span class="none-lab">Neither document mentions this</span>`;
+  }
 
   /* These four labels were literal strings — "14 days theirs", "16 days yours", "30 → 14".
      They were written for the demo pair and rendered unchanged on live runs, so a real
@@ -969,7 +929,15 @@ function geoBars(r){
 
 function caption(r, m){
   if (r.zones) return `<b>EU/EEA</b> covered by both. <span class="up">Switzerland + UK: no cover at all.</span>`;
-  if (r.unit === 'NONE') return `<span class="na">Cannot be drawn.</span> Unresolved on both sides.`;
+  if (r.unit === 'ONE')
+    return `<b>${r.fmt(r.val)}</b> ${r.theirs ? 'covered' : 'yours'} in one document.
+            <span class="na">${esc(r.otherName)} states no figure.</span>`;
+  if (r.unit === 'NONE'){
+    const q = (r.quotes || []).find(x => x.t && x.t.length > 8);
+    return q
+      ? `<span class="na">No figure stated.</span> The document raises it: »${esc(q.t.slice(0,120))}«`
+      : `<span class="na">Neither document mentions this.</span> Nothing to compare, and nothing hidden.`;
+  }
   if (r.theirsFirst){
     const lost = dayLoss(r);
     return `<b>${dayWas(r)} → ${r.theirsNow} days</b> theirs.` +
@@ -986,7 +954,13 @@ function caption(r, m){
 function aria(r, m){
   const other = mode === 'a' ? 'last year' : 'your policy today';
   if (r.zones) return `${r.when}. ${r.field}. Your policy covers the EU, EEA, Switzerland and the United Kingdom. The offer covers the EU and EEA only, so Switzerland and the United Kingdom have no cover at all.`;
-  if (r.unit === 'NONE') return `${r.when}. ${r.field}. Not established in either document. Cannot be drawn.`;
+  if (r.unit === 'ONE')
+    return `${r.when}. ${r.field}. One document states ${r.fmt(r.val)}. ${r.otherName} states no figure, so there is nothing to compare it with.`;
+  if (r.unit === 'NONE'){
+    const q = (r.quotes || []).find(x => x.t && x.t.length > 8);
+    return q ? `${r.when}. ${r.field}. Raised in the document but no figure stated. The wording is: ${q.t}`
+             : `${r.when}. ${r.field}. Not mentioned in either document.`;
+  }
   if (r.theirsFirst){
     const lost = dayLoss(r);
     return `${r.when}. ${r.field}. ${mode === 'a' ? 'Last year the insurer covered' : 'Previously'} `
@@ -1047,6 +1021,12 @@ function tableRows(m, R){
         <td class="n">${r.theirsNow} days</td>
         <td class="n">${lost ? '−' + lost + ' days' : 'identical'}</td><td>${src}</td></tr>`;
     }
+    if (r.unit === 'ONE'){
+      const mine = r.otherName !== undefined && r.val !== undefined;
+      return `<tr><th scope="row">${esc(r.when)}</th>
+        <td class="n">${mine ? r.fmt(r.val) : '—'}</td><td>Not stated</td>
+        <td>Nothing to compare</td><td>${src}</td></tr>`;
+    }
     const d = r.now - r.was;
     return `<tr><th scope="row">${esc(r.when)}</th><td class="n">${eur(r.was)}</td><td class="n">${eur(r.now)}</td>
       <td class="n">${d===0?'identical':(d>0?'+':'−')+eur(Math.abs(d))+(r.conditional?' '+r.conditional:'')}</td>
@@ -1071,38 +1051,52 @@ const MARKETS = {DK:'Denmark', DE:'Germany', IE:'Ireland', FR:'France', NL:'Neth
 const PROFILE = {annual_km:null, drives_abroad:null, parking:null, vehicle_dependency:null};
 const FILES = {current:null, other:null};
 
-/* Three rows from the worked example below, cycled. Every figure here is one the
-   cached run actually produced — the theft excess, the glass excess and the
-   replacement-vehicle cap. Nothing on this page is a number someone made up to make
-   a bar look good, which is the only version of this animation worth having. */
+/* Four beats, all of them true.
+ *
+ * What stood here was the same invented Danish pair the result page carried: a theft
+ * excess "moving" 300 -> 500, a glass excess coming back 50, a replacement cap halved.
+ * The comment above it claimed every figure came from the cached run. It did — and the
+ * cached run was fiction. Across fourteen published IPIDs exactly one states an excess
+ * amount, so a renewal pair with four moving figures is not a thing that happens.
+ *
+ * These four come from the two recorded runs in demo-dk.json and demo-ie.json, which
+ * anyone can open. Two of them show a figure one insurer states and the other does not;
+ * two show a document naming a cover and giving no number. That is what these documents
+ * actually contain, and it is the product's whole argument stated in its own data.
+ */
 const ENTRY_SCENES = [
-  {cap:'What moved', when:'Your car is stolen · theft excess',
-   max:800, was:300, now:500, fmt:eur,
-   q:'»Selvrisiko ved tyveri og røveri: 500 EUR«',
-   src:'Fornyelse_2026.pdf · p. 3 · § Selvrisiko · extracted, not inferred',
-   says:'The dark part is what <b>you</b> carry. The dotted line is where it sat last year. '
-      + 'Every renewal is a line that moved without you.'},
-  {cap:'What moved back', when:'A stone hits your windscreen · glass excess',
-   max:800, was:150, now:100, fmt:eur,
-   q:'»Selvrisiko ved glasskade: 100 EUR«',
-   src:'Fornyelse_2026.pdf · p. 3 · § Selvrisiko · was 150 EUR in 2025',
-   says:'Not everything moves against you. This one came back €50 — <b>drawn the same way, '
-      + 'in the other direction</b>, so you can tell which is which without reading a word.'},
-  {cap:'What moved', when:'Your car is in the workshop · replacement vehicle',
-   max:30, was:30, now:14, fmt: n => n + ' days', theirs:true,
-   q:'»Der stilles erstatningsbil til rådighed i op til 14 dage pr. skadebegivenhed.«',
-   src:'Fornyelse_2026.pdf · p. 4 · was 30 dage in 2025',
-   says:'Thirty days last year, fourteen now. <b>The sixteen days in between are yours to '
-      + 'arrange</b> — the same line, measured in time instead of money.'},
-  /* The fourth beat is the one the product is really about. It used to sit in a separate
-     box beside the others; in the rotation it lands with the same weight as a finding,
-     which is exactly the claim being made about it. */
-  {cap:'What could not be established', when:'You break down in Germany · roadside assistance',
+  {cap:'Stated by one, not the other', when:'You make any claim \u00b7 standard excess \u00b7 Ireland',
+   max:400, was:0, now:300, sole:true, other:'AIG', fmt:eur,
+   q:'\u00bbPolicy Excess options \u2013 the standard excess is \u20ac300 (this is the amount you '
+    +'will have to pay towards the cost of a claim).\u00ab',
+   src:'ie-aviva-motorcare.pdf \u00b7 p. 1 \u00b7 extracted, not inferred',
+   says:'Aviva puts a number on it. AIG\u2019s document says only that <b>an excess will apply, '
+      + 'see your policy schedule</b>. <b>Those are different facts</b>, and only one of them '
+      + 'can be compared.'},
+
+  {cap:'Stated by one, not the other', when:'You damage someone else\u2019s property \u00b7 liability limit',
+   max:40000000, was:0, now:30000000, sole:true, other:'AIG', theirsSide:true, fmt:eur,
+   q:'\u00bbdamage arising as a result of an accident caused by or in connection with the car, '
+    +'up to a limit of \u20ac30,000,000;\u00ab',
+   src:'ie-aviva-motorcare.pdf \u00b7 p. 1 \u00b7 the most the insurer pays',
+   says:'The other side of the same line \u2014 what <b>they</b> carry. One document caps it at '
+      + '\u20ac30 million. The other names no cap at all, which is not the same as no limit.'},
+
+  {cap:'Named, and not priced', when:'You break down \u00b7 roadside assistance \u00b7 Denmark',
+   hole:true, hollowLab:'Named, no figure',
+   q:'\u00bbtilvalgsd\u00e6kninger - fx F\u00f8rerd\u00e6kning, Vejhj\u00e6lp, Nulselvrisiko og Glas m.m.\u00ab',
+   src:'dk-tryg-current.pdf \u00b7 p. 1 \u00b7 found by checking the text, not by asking again',
+   says:'The document <b>names</b> roadside assistance, as one of several optional extras, and '
+      + 'never says whether you have it or what it costs. <b>Not silence \u2014 a subject raised '
+      + 'and dropped.</b>'},
+
+  {cap:'In neither document', when:'Twelve of eighteen things worth comparing',
    hole:true,
-   q:'No matching clause. 11 pages searched — no vejhjælp, assistance or Europa.',
-   src:'Fornyelse_2026.pdf · whole document · stated in 2025, absent here',
-   says:'<b>An absent clause is not a removed benefit.</b> So it is drawn as a hole rather '
-      + 'than filled in, and becomes a question for your insurer.'},
+   q:'No collision excess, no theft excess, no glass excess, no premium, no limits. '
+    +'Two pages each, four years apart, and not one figure in either.',
+   src:'dk-tryg-2022.pdf vs dk-tryg-current.pdf \u00b7 18 dimensions compared',
+   says:'<b>That is not a gap in your cover \u2014 it is a gap in what you were sent.</b> The '
+      + 'numbers live on the policy schedule, which is a document nobody compares.'},
 ];
 
 let ENTRY_I = 0, ENTRY_TIMER = null, ENTRY_COUNT = null;
@@ -1142,6 +1136,9 @@ function entryScene(i, instant){
   // An absence has no bar to draw. That is the point, so it gets the hollow instead.
   g('m-trk').hidden = !!s.hole;
   g('m-hollow').hidden = !s.hole;
+  /* "Nothing here" is right for a subject neither document raises and wrong for one the
+     document names without pricing. Two different absences; two different labels. */
+  if (s.hole) g('m-hollow').firstElementChild.textContent = s.hollowLab || 'Nothing here';
   if (s.hole) return;
 
   if (s.theirs){
@@ -1154,8 +1151,21 @@ function entryScene(i, instant){
     inn.classList.add('out'); inn.style.left = 'calc(' + P(s.now) + ' - 74px)';
     d.className = 'dl2 inbar'; d.style.left = 'calc(' + P(s.now) + ' + 11px)';
     d.textContent = (s.max - s.now) + ' days yours';
+  } else if (s.sole){
+    /* One document states it; the other does not. Nothing MOVED, so nothing is drawn as
+       movement: no ghost line, no hatched growth, no +/- delta. A plain bar for the
+       stated figure, and the other insurer named as stating none. */
+    a.style.width = P(s.now);
+    a.style.background = s.theirsSide ? 'var(--pine)' : 'var(--ink)';
+    b.className = 'sg b'; b.style.left = '100%'; b.style.width = '0';
+    gh.style.left = '-99%'; g('m-gl').textContent = '';
+    inn.classList.remove('out'); inn.style.left = '9px';
+    d.className = 'dl2 na';
+    d.style.left = 'auto'; d.style.right = '11px';
+    d.textContent = s.other + ' states none';
   } else {
     a.style.width = P(s.now);
+    a.style.background = '';
     b.className = 'sg b' + (worse ? '' : ' ret');
     b.style.left = P(Math.min(s.was, s.now));
     b.style.width = P(delta);
@@ -1163,6 +1173,7 @@ function entryScene(i, instant){
     gh.classList.toggle('end', s.was / s.max >= .96);
     inn.classList.remove('out'); inn.style.left = '9px';
     d.className = 'dl2' + (worse ? '' : ' ret');
+    d.style.right = 'auto';
     d.style.left = 'calc(' + P(Math.max(s.was, s.now)) + ' + 9px)';
     d.textContent = (worse ? '+' : '−') + eur(delta) + ' yours';
   }
@@ -1217,9 +1228,15 @@ function chip(){
     el.innerHTML = `<span class="dot"></span><b>Live</b>
       <span>Your documents · Nemotron on Nebius${t}</span>`;
   } else {
+    /* It said "Illustrative — example documents — no live call". Two of those three were
+       false the moment the invented fixtures were replaced: these are published IPIDs and
+       this is a real run of this API over them, saved so a judge never waits on a cold
+       start. Recorded is the honest word. */
+    const p = DEMO_PAGE[MODE];
+    const t = p && p.stats ? ` · ${p.stats.total_s}s` : '';
     el.className = 'mode-chip';
-    el.innerHTML = `<span class="dot"></span><b>Illustrative</b>
-      <span>Example documents · cached run · no live call</span>`;
+    el.innerHTML = `<span class="dot"></span><b>Recorded</b>
+      <span>Published IPIDs · a real run of this API, saved${t}</span>`;
   }
 }
 
@@ -1258,8 +1275,15 @@ function choose(m){
   show('upload');
 }
 
-function seeExample(m){
+async function seeExample(m){
   MODE = m; SOURCE = 'cached'; LIVE = null;
+  if (!DEMO[m]) await loadDemos();
+  if (!DEMO[m]){
+    fail(`<b>The recorded example could not be loaded.</b> It lives in
+          <code>${esc(DEMO_SRC[m])}</code> beside this page. Uploading two documents
+          still works \u2014 that path does not depend on this file.`);
+    return;
+  }
   show('result'); paint();
 }
 
@@ -1438,6 +1462,22 @@ function q(f, yr){
 
 function buildLive(res){
   const cur = res.documents[0] || {}, oth = res.documents[1] || {};
+  const fileOf = x => (x.name || '').replace(/\.pdf$/i,'');
+  /* Two different jobs. The header has room for the legal entity; a label sitting beside
+     a bar at 13px does not, and "Aviva Insurance Ireland DA" — cut mid-word — is worse
+     than either. So the header gets the name as given, and the bar gets the first two
+     words, never a fragment of a third. */
+  const trim = n => String(n).split(',')[0].split(/\s+/).slice(0, 2).join(' ');
+  const bothInsurers = !!(cur.insurer && oth.insurer);
+  const sameInsurer = bothInsurers && cur.insurer === oth.insurer;
+  /* Never one insurer against one filename. The model returned an insurer for the 2024
+     Tryg document and not for the 2022 one, and the header read "dk-tryg-2022 vs Tryg
+     Forsikring A/S" — two kinds of name across a "vs", which reads as two companies.
+     If both sides cannot be named the same way, both are named by their file. */
+  const DOCA = bothInsurers ? cur.insurer : (fileOf(cur) || 'document one');
+  const DOCB = bothInsurers ? oth.insurer : (fileOf(oth) || 'document two');
+  const SHORTA = trim(DOCA), SHORTB = trim(DOCB);
+  const stated = v => v !== null && v !== undefined && v !== '' && Number.isFinite(Number(v));
   const money = [], time = [];
   let geo = null, premium = null, hole = null;
 
@@ -1478,7 +1518,29 @@ function buildLive(res){
       const kind = d.verdict === 'missing_both' ? 'undisclosed'
                  : d.verdict === 'uncertain'    ? 'unsettled'
                  :                                'asym';
-      const row = {...base, unit:'NONE', sym: kind === 'undisclosed', kind};
+
+      /* One side has a figure. Draw it.
+         Aviva states a EUR 30,000,000 property-damage limit and a EUR 300 excess; AIG
+         states neither. Routing the whole row to "cannot be drawn" because the pair is
+         unresolved threw away the half of it that IS resolved — on the one tab where
+         real money exists. There is nothing to compare, and there is something to show. */
+      const va = stated(d.current.value) ? Number(d.current.value) : null;
+      const vb = stated(d.other.value)   ? Number(d.other.value)   : null;
+      if ((va === null) !== (vb === null) && d.unit === 'EUR'){
+        const theirs = isLimit(d);
+        // A limit belongs under "What they carry" whether or not both sides state one:
+        // the scale and the moral direction are the row's, not the comparison's.
+        (theirs ? limits : money).push({...base, unit:'ONE', kind, theirs,
+                    val: va === null ? vb : va,
+                    max: theirs ? MAXL : MAXE,
+                    fmt: eur,
+                    otherName: va === null ? SHORTA : SHORTB});
+        continue;
+      }
+
+      const row = {...base, unit:'NONE', sym: kind === 'undisclosed', kind,
+                   // the word the absence check matched on, for the evidence line
+                   term: (d.current.note || d.other.note || '').match(/\u00ab([^\u00bb]+)\u00bb/)?.[1] || ''};
       money.push(row);
       if (kind === 'asym' && !hole) hole = {d, row};   // the showcase must be a real finding
       continue;
@@ -1508,19 +1570,29 @@ function buildLive(res){
      thing this product exists to catch. */
   /* `Number(null)` is 0, not NaN — which is how a premium neither document states was
      drawn as a struck-through €0 becoming €0. A null is not a zero anywhere in this
-     product, and the test has to say so explicitly. */
-  const stated = v => v !== null && v !== undefined && v !== '' && Number.isFinite(Number(v));
+     product, and the test has to say so explicitly. (`stated` is defined at the top of
+     buildLive, because the one-sided-value branch above needs it too.) */
   const premiumSilent = !!premium && !(stated(premium.current.value) && stated(premium.other.value));
   const undisclosed = nOf('undisclosed') + (premium && premium.verdict === 'missing_both' ? 1 : 0);
   const dimensions = res.differences.length;
   /* The section carrying the information gets the weight. Folding 16 undisclosed rows
      away to feature 2 would be the hierarchy exactly backwards. */
   const undisclosedDominates = undisclosed > dimensions / 2;
+  /* Two documents can both be full of figures and still share none. "This is what you
+     would carry instead" is a promise of a comparison, and on the Irish pair there is
+     not a single dimension where both sides state a number. */
+  const anyComparable = [...money, ...limits].some(r => r.unit !== 'NONE' && r.unit !== 'ONE')
+                     || time.length > 0;
   const A = res.mode === 'renewal';
 
   return {
     source:'live', stats: {total_s: res.total_s, ...res.timings_s},
-    meta: `${esc(cur.insurer || cur.name || 'Your policy')} vs ${esc(oth.insurer || oth.name || 'the other document')}<br>
+    /* Name the two DOCUMENTS, not one insurer and one filename. When the model returned
+       an insurer for the 2024 Tryg document and not for the 2022 one, this read
+       "dk-tryg-2022.pdf vs Tryg Forsikring A/S" — two different kinds of name on either
+       side of a "vs", which reads as two companies. Both documents are Tryg. */
+    meta: `${esc(sameInsurer ? `${cur.insurer} — ${fileOf(cur)} vs ${fileOf(oth)}`
+                              : `${DOCA} vs ${DOCB}`)}<br>
            Two documents · ${res.differences.length} compared fields · ${esc(MARKETS[res.market] || res.market)} · Nemotron on Nebius Token Factory`,
     eyebrow: A ? 'Your renewal' : 'Your policy · vs · the offer',
     /* A confirmed move against the reader is the news. Leading with the unknowns
@@ -1545,6 +1617,10 @@ function buildLive(res){
              document. <b>That is not a gap in your cover — it is a gap in what you were
              sent.</b> An Insurance Product Information Document describes the product;
              your premium and your excess live in the policy schedule.`
+      : !anyComparable
+          ? `Not one of the ${dimensions} things Klausul compares is stated as a figure in
+             <b>both</b> documents, so nothing here can be ranked against anything. What
+             each document does say is below, with the line it says it in.`
       : A ? 'This is what you now carry yourself when something happens.'
           : 'This is what you would carry instead.',
     sub: A ? 'Drawn to the same scale. The dotted line is last year. Tap a row for the wording.'
@@ -1570,7 +1646,6 @@ function buildLive(res){
     holeSub: hole ? 'This is the finding, not a gap in it.' : 'Nothing was left unresolved.',
     holeH3: hole ? hole.row.field : '',
     holeP: hole ? esc(hole.row.note || 'Neither document settles this.') : '',
-    pages: [],
     priceTitle:'What they charge',
     /* `premium` being PRESENT in the comparison is not the same as it carrying a number.
        On the Tryg pair it is present and both sides are null, and the old test (`premium
@@ -1599,8 +1674,7 @@ const money0 = v => (v !== null && v !== undefined && v !== '' && Number.isFinit
 /* ── paint: one renderer, two sources ──────────────────────────────────────── */
 function page(){
   if (SOURCE === 'live' && LIVE) return LIVE;
-  const m = MODES[MODE], R = ROWS[MODE];
-  return {...m, money: R.money, time: R.time, geo: R.geo, hasHole: true, source:'cached'};
+  return demoPage(MODE);
 }
 
 /* The featured absence: one of the asymmetric findings, shown at length with the pages
@@ -1612,18 +1686,12 @@ function holeHtml(p){
         <div class="t">Cannot be established</div>
         <h3>${esc(p.holeH3)}</h3>
         <p>${p.holeP}</p>
-        ${(p.pages || []).length ? `<div class="two">${p.pages.map(pg => `
-          <div class="pg">
-            <div class="ph"><span>${esc(pg.ttl)}</span><span>${esc(pg.pg)}</span></div>
-            ${pg.lines.map(([l,on]) => `<p class="ln${on?' on':''}">${on?`<mark>${esc(l)}</mark>`:esc(l)}</p>`).join('')}
-            ${pg.gap ? `<div class="gap"><b>${esc(pg.gap[0])}</b>${esc(pg.gap[1])}</div>` : ''}
-            ${pg.after ? `<p class="ln">${esc(pg.after[0])}</p>` : ''}
-          </div>`).join('')}</div>` : ''}
       </div>`;
 }
 
 function paint(){
   const p = page();
+  if (!p) return;        // a recording that has not arrived yet; seeExample explains
   document.getElementById('meta').innerHTML = p.meta;
   chip();
   document.getElementById('tab-a').setAttribute('aria-selected', String(MODE === 'a'));
@@ -1749,7 +1817,11 @@ function paint(){
 
 /* The axis has to fit whatever the documents actually say, not what the example did. */
 function axisTicks(rows){
-  const max = Math.max(800, ...(rows || []).filter(r => r.max && r.unit !== 'NONE').map(r => r.max));
+  /* The floor was 800 — MAX_EUR from the invented Danish fixture, left behind when the
+     fixture went. With a real Aviva excess of EUR 300 the bars were drawn against a scale
+     of 400 and the axis was labelled to 800, so a EUR 300 bar sat under the EUR 600 tick.
+     The axis has to be the same ruler the bars are. */
+  const max = Math.max(1, ...(rows || []).filter(r => r.max && r.unit !== 'NONE').map(r => r.max));
   return [0,25,50,75,100].map(p => [p, '€' + Math.round(max*p/100).toLocaleString('en-GB')]);
 }
 function dayTicks(rows){
@@ -1765,9 +1837,10 @@ function toggle(id){
   b.setAttribute('aria-expanded', String(!open));
 }
 
-function setMode(x){
+async function setMode(x){
   MODE = x;
   if (SOURCE === 'live'){ SOURCE = 'cached'; LIVE = null; }   // the example, not your run
+  if (!DEMO[x]) await loadDemos();
   paint();
   window.scrollTo({top:0, behavior: reduced() ? 'auto' : 'smooth'});
 }
@@ -1795,6 +1868,7 @@ function animate(){
 
 let MODE = 'a';
 probeServer();
+loadDemos();        // both recordings, in parallel, before anyone clicks
 show('entry');
 
 </script>
