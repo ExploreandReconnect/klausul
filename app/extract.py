@@ -13,6 +13,7 @@ import pdfplumber
 from pydantic import ValidationError
 
 from .nebius import MODEL_EXTRACT, complete_json
+from .validate import conflict_notes, shared_evidence
 from .vocab import NUMBER_FORMATS
 from .schema import COVERAGES, EXCESSES, Field, Policy, Status
 
@@ -197,6 +198,16 @@ def _all_fields(p: Policy):
         yield v
 
 
+def _checked(p: Policy) -> Policy:
+    """Deterministic post-extraction check. No model call, by the same argument as
+    compare.py: a claim the model cannot verify about itself, that code verifies
+    trivially by looking at all of one document's answers at once."""
+    conflicts = shared_evidence(p)
+    if conflicts:
+        p.uncertainties = list(p.uncertainties) + conflict_notes(conflicts)
+    return p
+
+
 def extract(path: str | Path, *, model: str = MODEL_EXTRACT, market: str | None = None) -> Policy:
     """`market` is an ISO-2 code (DK/DE/IE/FR/NL). It selects the number convention,
     which is a 100x error if guessed wrong — see app.vocab.NUMBER_FORMATS."""
@@ -218,14 +229,14 @@ def extract(path: str | Path, *, model: str = MODEL_EXTRACT, market: str | None 
     stats: dict = {}
     policy = to_policy(complete_json(SYSTEM, prompt, model=model, stats=stats), path.name)
     if evidence_count(policy) > 0:
-        return policy
+        return _checked(policy)
 
     # Nothing was grounded. One clean retry: this model is non-deterministic even at
     # temperature 0, and an empty answer is usually a bad draw rather than a bad document.
     retry: dict = {}
     policy = to_policy(complete_json(SYSTEM, prompt, model=model, stats=retry), path.name)
     if evidence_count(policy) > 0:
-        return policy
+        return _checked(policy)
 
     raise EmptyExtraction(path.name, chars=len(text), stats=retry or stats)
 

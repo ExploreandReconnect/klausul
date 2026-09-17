@@ -112,7 +112,7 @@ def main() -> int:
 
     reg = yaml.safe_load(REG.read_text(encoding="utf-8"))
     changed = 0
-    counts = {"open": 0, "downloaded": 0, "blocked": 0, "probe_needed": 0, "no_url": 0}
+    counts = {"open": 0, "downloaded": 0, "blocked": 0, "needs_pick": 0, "probe_needed": 0, "no_url": 0}
 
     for src in reg["sources"]:
         if a.market and src.get("market") != a.market:
@@ -121,11 +121,19 @@ def main() -> int:
 
         if not url:
             counts["no_url"] += 1
-            print(f"  ·  {src['id']:<28} no url yet — probe by hand, then add it")
+            print(f"  -  {src['id']:<28} no url yet -- probe by hand, then add it")
             continue
 
         if route == "blocked":
             counts["blocked"] += 1
+            continue
+
+        if src.get("candidate_kind") == "index":
+            # A published index IS a documented route; it just points at several products.
+            # Marking it blocked would be wrong twice: the route works, and the contact
+            # email would ask for something already public.
+            counts["needs_pick"] = counts.get("needs_pick", 0) + 1
+            print(f"  ?  {src['id']:<28} index page - choose the motor IPID by hand: {url}")
             continue
 
         allowed = robots_ok(url)
@@ -135,7 +143,7 @@ def main() -> int:
             src["blocked_reason"] = "robots.txt disallows this path for our agent"
             p = write_contact(src, a.owner, a.email)
             counts["blocked"] += 1; changed += 1
-            print(f"  ✗  {src['id']:<28} robots disallow → blocked, contact drafted at {p.name}")
+            print(f"  x  {src['id']:<28} robots disallow -> blocked, contact drafted at {p.name}")
             continue
 
         try:
@@ -146,7 +154,7 @@ def main() -> int:
             src["blocked_reason"] = f"{e.__class__.__name__}: {e}"
             p = write_contact(src, a.owner, a.email)
             counts["blocked"] += 1; changed += 1
-            print(f"  ✗  {src['id']:<28} {e.__class__.__name__} → blocked, contact drafted")
+            print(f"  x  {src['id']:<28} {e.__class__.__name__} -> blocked, contact drafted")
             continue
 
         if "pdf" not in ctype.lower():
@@ -155,13 +163,13 @@ def main() -> int:
             src["blocked_reason"] = f"served {ctype or 'unknown'}, not a PDF — no document route"
             p = write_contact(src, a.owner, a.email)
             counts["blocked"] += 1; changed += 1
-            print(f"  ✗  {src['id']:<28} not a PDF ({ctype}) → blocked, contact drafted")
+            print(f"  x  {src['id']:<28} not a PDF ({ctype}) -> blocked, contact drafted")
             continue
 
         src["route"] = "open"
         src["probed"] = TODAY
         counts["open"] += 1; changed += 1
-        print(f"  ✓  {src['id']:<28} open  {final}")
+        print(f"  OK {src['id']:<28} open  {final}")
 
         if not a.probe:
             out = PDF / src["market"] / f"{src['id']}.pdf"
@@ -172,7 +180,7 @@ def main() -> int:
             src["local"] = str(out.relative_to(ROOT))
             src["bytes"] = out.stat().st_size
             counts["downloaded"] += 1
-            print(f"     → {out.relative_to(ROOT)}  ({out.stat().st_size:,} bytes)")
+            print(f"     -> {out.relative_to(ROOT)}  ({out.stat().st_size:,} bytes)")
 
         time.sleep(DELAY_S)
 
@@ -182,7 +190,7 @@ def main() -> int:
 
     print("\n" + "  ".join(f"{k}={v}" for k, v in counts.items()))
     if counts["blocked"]:
-        print(f"drafted contact emails in {CONTACT.relative_to(ROOT)}/ — send them, don't work around them")
+        print(f"drafted contact emails in {CONTACT.relative_to(ROOT)}/ -- send them, don't work around them")
     return 0
 
 

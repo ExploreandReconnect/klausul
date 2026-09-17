@@ -1,0 +1,28 @@
+Subject: Request to use your published IPID in an open-source research corpus
+
+Dear Islands Insurance (NFU Mutual),
+
+I am building Klausul, an open-source (MIT) research project that helps EU
+consumers understand what changed in a motor-insurance renewal, and what would
+change if they switched. It normalises documents to the Insurance Product
+Information Document structure set out in Commission Implementing Regulation
+(EU) 2017/1469.
+
+I would like to include your published motor IPID in a small evaluation corpus
+(IE, ~10 documents per market) used solely to measure extraction accuracy.
+I could not find a documented machine-readable route to the document, so I have
+not retrieved it automatically and will not do so.
+
+Could you either:
+  1. point me to a stable public URL for the current motor IPID, or
+  2. send the PDF directly, or
+  3. tell me if you would prefer the document not be included?
+
+The corpus is used for measurement only. No policy wording is republished; the
+project stores the document, an extracted field table, and a page-level citation.
+
+Thank you,
+Hesham Morten Gabr
+smg@exploreandreconnect.com
+
+Probed: 2026-09-16. Registered as blocked in corpus/register.yaml until answered.

@@ -60,12 +60,23 @@ def compare_dimension(a: Policy, b: Policy, dim: Dimension) -> Difference:
     # Absence is reported as absence. It is never resolved into a value.
     if fa.status is Status.NOT_FOUND and fb.status is Status.NOT_FOUND:
         return Difference(verdict="missing_both", **base)
+
+    # Ambiguity outranks absence, and the order here is the whole point.
+    #
+    # `missing_a` is a FINDING: it says the other document states this and yours does
+    # not. Making that claim requires the other side to actually assert something. When
+    # these checks ran the other way round, an unsettled value on one side still
+    # produced "stated there, absent here" — which is how the Tryg pair reported that
+    # European roadside cover had been added at renewal, on the strength of a territory
+    # clause the model had cited twice. An unsettled value settles nothing, including
+    # whether the other side is missing anything.
+    if Status.AMBIGUOUS in (fa.status, fb.status) or Status.CONFLICTING in (fa.status, fb.status):
+        return Difference(verdict="uncertain", **base)
+
     if fa.status is Status.NOT_FOUND:
         return Difference(verdict="missing_a", **base)
     if fb.status is Status.NOT_FOUND:
         return Difference(verdict="missing_b", **base)
-    if Status.AMBIGUOUS in (fa.status, fb.status) or Status.CONFLICTING in (fa.status, fb.status):
-        return Difference(verdict="uncertain", **base)
     if min(fa.confidence, fb.confidence) < 0.60:
         return Difference(verdict="uncertain", **base)
 

@@ -511,9 +511,10 @@ legend{font-size:13px;letter-spacing:.14em;text-transform:uppercase;font-weight:
     <div class="hero">
       <div class="hero-l">
         <div class="eyebrow">EU motor insurance</div>
-        <h1>Know what changed before you renew.</h1>
-        <p class="lede">Upload the two documents your insurer sent you. Klausul shows what moved,
-          <b>where every finding came from</b>, and what to ask before you decide.
+        <h1>Know what your documents don't say.</h1>
+        <p class="lede">Upload two insurance documents. Klausul shows what differs, cites the
+          exact sentence behind every finding, and draws <b>what neither document settles</b> —
+          which, in the documents we have tested, is usually most of it.
           <span class="dur">A minute or two, depending on the documents.</span></p>
 
         <!-- Four facts, all true, all previously in 9px grey at the bottom of the page.
@@ -524,6 +525,7 @@ legend{font-size:13px;letter-spacing:.14em;text-transform:uppercase;font-weight:
           <li><b>Not stored.</b> Read in memory to answer one request, then gone.</li>
           <li><b>Open source.</b> MIT — the extraction prompt is in the repo.</li>
           <li><b>EU standard.</b> Fields follow the IPID structure in Regulation 2017/1469.</li>
+          <li><b>Measured, not claimed.</b> 14 real IPIDs read so far; 1 states an excess amount.</li>
         </ul>
       </div>
 
@@ -859,7 +861,7 @@ const ROWS = {
     note:'Low confidence by design: no quote can prove a silence. You drive abroad often — this is the phone call.'}],
   time:[
    {id:'workshop', when:'Your car is in the workshop', field:'Replacement vehicle', unit:'DAY',
-    max:MAX_DAY, theirsFirst:true, theirsNow:14,
+    max:MAX_DAY, theirsFirst:true, theirsNow:14, was:30, now:14,
     quotes:[Q('2026','Der stilles erstatningsbil til rådighed i op til 14 dage pr. skadebegivenhed.','Fornyelse_2026.pdf','p. 6','§ Erstatningsbil',.94),
             Q('2025','Der stilles erstatningsbil til rådighed i op til 30 dage pr. skadebegivenhed.','Bilforsikring_2025.pdf','p. 5','§ Erstatningsbil',.94)],
     note:'You depend heavily on the car. A halved period costs you more than the €90.'}],
@@ -894,17 +896,31 @@ const ROWS = {
 
 let mode = 'a';
 
+/* A days row is drawn from the insurer's side: the bar is what THEY cover, the ghost is
+   what they covered before, and the shortfall is the difference — a real subtraction of
+   two stated figures, not the remainder of an axis we chose. */
+const dayWas  = r => Number.isFinite(Number(r.was)) ? Number(r.was) : r.max;
+const dayLoss = r => Math.max(0, dayWas(r) - r.theirsNow);
+
 /* ── marks ── */
 function bars(r, m){
   if (r.unit === 'NONE')
     return `<div class="none"></div><span class="none-lab">Cannot be drawn</span>`;
 
+  /* These four labels were literal strings — "14 days theirs", "16 days yours", "30 → 14".
+     They were written for the demo pair and rendered unchanged on live runs, so a real
+     document offering 7 days was described to the reader as offering 14. A product whose
+     claim is that every number came from a document cannot print numbers that did not.
+     Everything here is now derived from the row. */
   if (r.theirsFirst){
     const l = pc(r.theirsNow, r.max), w = pc(r.max - r.theirsNow, r.max);
+    const lost = dayLoss(r);
     return `<div class="seg add" data-from-left="100" data-from-w="0" style="left:${l}%;width:${w}%"></div>
-            <div class="ghost end" style="left:100%"><b>${m.ghostLabel}</b></div>
-            <span class="tag" style="color:var(--ink-2)">14 days theirs</span>
-            <span class="delta" data-from="100" style="left:${l+4}%;color:#fff">16 days yours</span>`;
+            <div class="ghost end" style="left:${pc(dayWas(r), r.max)}%"><b>${m.ghostLabel}</b></div>
+            <span class="tag" style="color:var(--ink-2)">${r.theirsNow} days theirs</span>
+            ${lost ? `<span class="delta" data-from="100"
+               style="left:auto;right:calc(${100 - pc(dayWas(r), r.max)}% + 12px);color:var(--added)"
+               >${lost} ${lost === 1 ? 'day' : 'days'} yours</span>` : ''}`;
   }
 
   const now = pc(r.now, r.max), was = pc(r.was, r.max);
@@ -935,8 +951,12 @@ function bars(r, m){
   // A zero bar has no dark ground, so its label takes ink; a bar that reaches the
   // right edge puts its delta inside the last segment rather than off the track.
   out += `<span class="tag" style="color:${r.now === 0 ? 'var(--ink)' : 'var(--paper)'}">${eur(r.now)}</span>`;
-  out += (d > 0 && edge > 76)
-    ? `<span class="delta" data-from="${was}" style="left:auto;right:calc(${100-now}% + 12px);color:#fff">${dtxt}</span>`
+  // The flip used to be conditioned on `d > 0`, so a bar that MOVED YOUR WAY or did not
+  // move at all still put its label past the right edge — 9px of horizontal page scroll
+  // on a page whose whole argument is that it is drawn to scale. Any bar reaching the
+  // edge goes inside, whichever direction it moved.
+  out += (edge > 76)
+    ? `<span class="delta" data-from="${was}" style="left:auto;right:calc(${100-edge}% + 12px);color:#fff">${dtxt}</span>`
     : `<span class="delta" data-from="${was}" style="left:calc(${edge}% + 9px);color:${dcol}">${dtxt}</span>`;
   return out;
 }
@@ -950,7 +970,11 @@ function geoBars(r){
 function caption(r, m){
   if (r.zones) return `<b>EU/EEA</b> covered by both. <span class="up">Switzerland + UK: no cover at all.</span>`;
   if (r.unit === 'NONE') return `<span class="na">Cannot be drawn.</span> Unresolved on both sides.`;
-  if (r.theirsFirst) return `<b>30 → 14 days</b> theirs. <span class="up">16 days yours.</span>`;
+  if (r.theirsFirst){
+    const lost = dayLoss(r);
+    return `<b>${dayWas(r)} → ${r.theirsNow} days</b> theirs.` +
+      (lost ? ` <span class="up">${lost} ${lost === 1 ? 'day' : 'days'} yours.</span>` : ' Unchanged.');
+  }
   const d = r.now - r.was;
   const side = r.theirs ? 'covered' : 'yours';
   const worse = r.theirs ? d < 0 : d > 0;
@@ -963,7 +987,12 @@ function aria(r, m){
   const other = mode === 'a' ? 'last year' : 'your policy today';
   if (r.zones) return `${r.when}. ${r.field}. Your policy covers the EU, EEA, Switzerland and the United Kingdom. The offer covers the EU and EEA only, so Switzerland and the United Kingdom have no cover at all.`;
   if (r.unit === 'NONE') return `${r.when}. ${r.field}. Not established in either document. Cannot be drawn.`;
-  if (r.theirsFirst) return `${r.when}. ${r.field}. ${mode==='a'?'Last year the insurer covered all 30 days':'Previously all 30 days'}. Now they cover 14 and you carry the remaining 16.`;
+  if (r.theirsFirst){
+    const lost = dayLoss(r);
+    return `${r.when}. ${r.field}. ${mode === 'a' ? 'Last year the insurer covered' : 'Previously'} `
+         + `${dayWas(r)} days. Now they cover ${r.theirsNow}`
+         + (lost ? ` and you carry the remaining ${lost}.` : ' — unchanged.');
+  }
   const d = r.now - r.was;
   const t = d > 0 ? `${eur(d)} more than ${other}` : d < 0 ? `${eur(-d)} less than ${other}${r.conditional?', '+r.conditional:''}` : `the same as ${other}`;
   return `${r.when}. ${r.field}. You carry ${eur(r.now)}, ${t}. The insurer covers the rest.`;
@@ -1012,8 +1041,12 @@ function tableRows(m, R){
       <td>Excluded</td><td>${src}</td></tr>`;
     if (r.unit === 'NONE') return `<tr><th scope="row">${esc(r.when)}</th><td>Not found</td><td>Not found</td>
       <td>Cannot be established</td><td>${src}</td></tr>`;
-    if (r.theirsFirst) return `<tr><th scope="row">${esc(r.when)}</th><td class="n">0 days</td>
-      <td class="n">16 days</td><td class="n">+16 days</td><td>${src}</td></tr>`;
+    if (r.theirsFirst){
+      const lost = dayLoss(r);
+      return `<tr><th scope="row">${esc(r.when)}</th><td class="n">${dayWas(r)} days</td>
+        <td class="n">${r.theirsNow} days</td>
+        <td class="n">${lost ? '−' + lost + ' days' : 'identical'}</td><td>${src}</td></tr>`;
+    }
     const d = r.now - r.was;
     return `<tr><th scope="row">${esc(r.when)}</th><td class="n">${eur(r.was)}</td><td class="n">${eur(r.now)}</td>
       <td class="n">${d===0?'identical':(d>0?'+':'−')+eur(Math.abs(d))+(r.conditional?' '+r.conditional:'')}</td>
@@ -1437,10 +1470,17 @@ function buildLive(res){
          what an IPID covers — an IPID is two pages and does not discuss everything the
          schema can compare. Giving them equal weight asserts equal consequence, which
          is a claim the evidence does not support. */
-      const sym = d.verdict === 'missing_both';
-      const row = {...base, unit:'NONE', sym};
+      /* Three facts, not two. Splitting them was forced by the same pair that produced
+         the false finding: after the validator demoted the doubly-cited territory clause,
+         both rows became `uncertain` and landed under "Stated last year, absent now" — a
+         clause that is in BOTH documents, reported as absent from one. The wrapper had
+         changed; the claim had not. An unsettled value is not an absence. */
+      const kind = d.verdict === 'missing_both' ? 'undisclosed'
+                 : d.verdict === 'uncertain'    ? 'unsettled'
+                 :                                'asym';
+      const row = {...base, unit:'NONE', sym: kind === 'undisclosed', kind};
       money.push(row);
-      if (!sym && !hole) hole = {d, row};   // the showcase must be a real finding
+      if (kind === 'asym' && !hole) hole = {d, row};   // the showcase must be a real finding
       continue;
     }
     if (d.key === 'territories'){
@@ -1451,16 +1491,31 @@ function buildLive(res){
     const was = Number(d.current.value), now = Number(d.other.value);
     if (!Number.isFinite(was) || !Number.isFinite(now)) continue;
     if (d.unit === 'days') time.push({...base, unit:'DAY', max: Math.max(30, was, now),
-                                      theirsFirst:true, theirsNow: now});
+                                      theirsFirst:true, theirsNow: now, was, now});
     else if (isLimit(d)) limits.push({...base, was, now, max: MAXL, theirs:true});
     else money.push({...base, was, now, max: MAXE});
   }
 
   const c = res.counts || {};
   const worse = c.better_a || 0, better = c.better_b || 0;
-  // Only asymmetric absences are findings; the rest are undisclosed dimensions.
-  const unconfirmed = money.filter(r => r.unit === 'NONE' && !r.sym).length;
-  const undisclosed = money.filter(r => r.unit === 'NONE' &&  r.sym).length;
+  // Only asymmetric absences are findings; the rest are undisclosed or unsettled.
+  const nOf = k => money.filter(r => r.unit === 'NONE' && r.kind === k).length;
+  const absent = nOf('asym'), unsettled = nOf('unsettled');
+  const unconfirmed = absent + unsettled;
+  /* The premium is lifted out of the rows above and drawn on its own. It still counts
+     here: on the Tryg pair neither document states a premium, and a page that says
+     "15 of 18" while quietly holding back a sixteenth undisclosed field is doing the
+     thing this product exists to catch. */
+  /* `Number(null)` is 0, not NaN — which is how a premium neither document states was
+     drawn as a struck-through €0 becoming €0. A null is not a zero anywhere in this
+     product, and the test has to say so explicitly. */
+  const stated = v => v !== null && v !== undefined && v !== '' && Number.isFinite(Number(v));
+  const premiumSilent = !!premium && !(stated(premium.current.value) && stated(premium.other.value));
+  const undisclosed = nOf('undisclosed') + (premium && premium.verdict === 'missing_both' ? 1 : 0);
+  const dimensions = res.differences.length;
+  /* The section carrying the information gets the weight. Folding 16 undisclosed rows
+     away to feature 2 would be the hierarchy exactly backwards. */
+  const undisclosedDominates = undisclosed > dimensions / 2;
   const A = res.mode === 'renewal';
 
   return {
@@ -1470,28 +1525,45 @@ function buildLive(res){
     eyebrow: A ? 'Your renewal' : 'Your policy · vs · the offer',
     /* A confirmed move against the reader is the news. Leading with the unknowns
        buried it: three things had moved and the page opened by saying nobody could
-       confirm anything. The unknown gets the headline only when it IS the story. */
-    h1: worse > 0 ? (A ? 'The line between your money and theirs has moved.'
+       confirm anything. The unknown gets the headline only when it IS the story.
+
+       And on real documents it usually IS. Across 14 published IPIDs, one states an
+       excess amount; a real Tryg renewal pair left 16 of 18 dimensions undisclosed on
+       both sides. When that is the shape of the answer, saying "nothing to report"
+       would be the least useful true sentence available. The document not carrying
+       the figure is the finding, and it comes with a next step. */
+    h1: undisclosedDominates
+          ? `Most of this isn't in these documents.`
+      : worse > 0 ? (A ? 'The line between your money and theirs has moved.'
                        : 'You would carry more than you do now.')
       : better > 0 ? (A ? 'Most of this is fine. Here is what moved.'
                         : 'You would carry less than you do now.')
       : unconfirmed > 0 ? 'Something here nobody can confirm.'
       : 'Nothing material changed.',
-    lede: A ? 'This is what you now carry yourself when something happens.'
-            : 'This is what you would carry instead.',
+    lede: undisclosedDominates
+          ? `${undisclosed} of ${dimensions} things Klausul compares are stated in neither
+             document. <b>That is not a gap in your cover — it is a gap in what you were
+             sent.</b> An Insurance Product Information Document describes the product;
+             your premium and your excess live in the policy schedule.`
+      : A ? 'This is what you now carry yourself when something happens.'
+          : 'This is what you would carry instead.',
     sub: A ? 'Drawn to the same scale. The dotted line is last year. Tap a row for the wording.'
            : 'The dotted line is your policy today. The solid bar is the offer. Tap a row for the wording.',
     ghostLabel: A ? 'before' : 'now',
     keyGhost:   A ? 'Last year' : 'Your policy now',
+    /* The fourth cell exists because of the Tryg pair: the tally read 0 / 0 / 2 under a
+       headline saying most of the document was missing, so the summary contradicted the
+       page above it. The undisclosed count is a real number on every run and belongs in
+       the count that claims to be the summary. */
     tally: [['bad', String(worse), 'moved against you'],
             ['good', String(better), 'moved for you'],
-            ['na', String(unconfirmed),
-             unconfirmed === 1 ? 'could not be confirmed' : 'could not be confirmed']],
+            ['na', String(unconfirmed), 'could not be confirmed'],
+            ...(undisclosed ? [['na', String(undisclosed), 'in neither document']] : [])],
     undisclosed,
     because: (res.uncertainties || []).length
       ? `<b>${esc(res.uncertainties[0])}</b>`
       : 'Ordered by what your circumstances make most relevant. The figures do not move — only their order does.',
-    money, limits, time, geo,
+    money, limits, time, geo, undisclosedDominates, premiumSilent,
     limitsTitle:'What they carry',
     limitsSub:'The other side of the same line: the most the insurer pays. Its own scale, because a bigger bar here is in your favour.',
     holeTitle:'The one we could not draw',
@@ -1500,11 +1572,19 @@ function buildLive(res){
     holeP: hole ? esc(hole.row.note || 'Neither document settles this.') : '',
     pages: [],
     priceTitle:'What they charge',
-    priceSub:"Kept apart from the picture above, because it isn't what you carry.",
-    priceL: premium && premium.explanation ? esc(premium.explanation.meaning) : 'Annual premium.',
-    priceN: premium
-      ? `<s>${money0(premium.current.value)}</s>${money0(premium.other.value)}`
-      : '<span style="font-size:20px;color:var(--ink-3)">not stated</span>',
+    /* `premium` being PRESENT in the comparison is not the same as it carrying a number.
+       On the Tryg pair it is present and both sides are null, and the old test (`premium
+       ? …`) rendered a struck-through em dash followed by an em dash. A price we could not
+       find has to say so in words — this is the one field every reader looks for, and it
+       is the field a Danish IPID almost never contains. */
+    priceSub: premiumSilent
+      ? "Neither document states one. An IPID describes the product, not your quote — the premium is on the schedule or the renewal letter."
+      : "Kept apart from the picture above, because it isn't what you carry.",
+    priceL: premiumSilent ? 'Annual premium'
+          : premium && premium.explanation ? esc(premium.explanation.meaning) : 'Annual premium.',
+    priceN: premiumSilent || !premium
+      ? '<span style="font-size:20px;color:var(--ink-3)">not stated in either document</span>'
+      : `<s>${money0(premium.current.value)}</s>${money0(premium.other.value)}`,
     qTitle: A ? 'Questions before you renew' : 'Questions before you switch',
     qSub:'Only from what your documents leave open.',
     questions: (res.actions || []).map(x => [x.question, x.why]),
@@ -1512,7 +1592,9 @@ function buildLive(res){
     hasHole: !!hole,
   };
 }
-const money0 = v => Number.isFinite(Number(v)) ? '€' + Number(v).toLocaleString('en-GB') : '—';
+// Number(null) === 0 and Number('') === 0. An unstated amount is not zero euros.
+const money0 = v => (v !== null && v !== undefined && v !== '' && Number.isFinite(Number(v)))
+  ? '€' + Number(v).toLocaleString('en-GB') : '—';
 
 /* ── paint: one renderer, two sources ──────────────────────────────────────── */
 function page(){
@@ -1558,8 +1640,10 @@ function paint(){
   /* Findings first, at full weight. Dimensions neither document discusses are still
      shown in full, with their evidence — collapsed, with the count in the heading, so
      nothing is hidden and nothing competes with the findings for attention. */
-  const unconfirmed = blanks.filter(r => !r.sym);
-  const undisclosed = blanks.filter(r =>  r.sym);
+  const absent     = blanks.filter(r => r.kind ? r.kind === 'asym'       : !r.sym);
+  const unsettled  = blanks.filter(r => r.kind === 'unsettled');
+  const undisclosed= blanks.filter(r => r.kind ? r.kind === 'undisclosed' :  r.sym);
+  const drew = drawable.length || (p.time || []).length || p.geo || (p.limits || []).length;
   const t = tableRows(p, {money: p.money, time: p.time, geo: p.geo});
   const EUR_T = axisTicks(drawable);
   const LIM_T = axisTicks(p.limits);
@@ -1569,6 +1653,10 @@ function paint(){
     <h1>${esc(p.h1)}</h1>
     <p class="lede">${p.lede}</p>
 
+    ${/* A heading, a subtitle, a legend and an axis with nothing under them is what the
+          Tryg pair produced: a section that says "drawn to the same scale" above no bars.
+          The chart apparatus is only honest when there is something to chart. */
+      drew ? `
     <h2>What you carry</h2>
     <p class="h2sub">${esc(p.sub)}</p>
     ${drawable.length ? axis(EUR_T) + drawable.map(r => rowHtml(r, p)).join('') : ''}
@@ -1589,7 +1677,7 @@ function paint(){
       <div><i class="k-hatch"></i> Newly yours</div>
       <div><i class="k-give"></i> Moved your way</div>
       <div><i class="k-dash"></i> Not found</div>
-    </div>
+    </div>` : ''}
 
     <details class="tbl"><summary>See the same figures as a table</summary>
       <div class="tblwrap"><table>
@@ -1602,21 +1690,36 @@ function paint(){
       `<div class="t3 ${k}"><span class="n">${esc(n)}</span><span class="l">${esc(l)}</span></div>`).join('')}</div>
     <p class="because">${p.because}</p>
 
-    ${unconfirmed.length ? `
-      <h2>${MODE === 'a' ? 'Stated last year, absent now' : 'In one document, not the other'} — ${unconfirmed.length}</h2>
+    ${absent.length ? `
+      <h2>${MODE === 'a' ? 'Stated last year, absent now' : 'In one document, not the other'} — ${absent.length}</h2>
       <p class="h2sub">A clause that appears on one side and not the other. <b>This is the
         finding, not a gap in it</b> — an absent clause is not a removed benefit, so it is
         drawn as a hole and becomes a question for your insurer.</p>
-      <div class="blanks">${unconfirmed.map(r => rowHtml(r, p)).join('')}</div>
+      <div class="blanks">${absent.map(r => rowHtml(r, p)).join('')}</div>
       ${p.hasHole ? holeHtml(p) : ''}` : ''}
 
+    ${unsettled.length ? `
+      <h2>Stated, but not settled — ${unsettled.length}</h2>
+      <p class="h2sub">Both documents touch these, and the wording does not pin them down —
+        a conditional value, a figure two passages disagree on, or one sentence offered as
+        evidence for two different things. <b>This is not an absence</b>: nothing is
+        missing, the documents simply do not decide it. The quote is shown so you can see
+        exactly what was ambiguous.</p>
+      <div class="blanks">${unsettled.map(r => rowHtml(r, p)).join('')}</div>` : ''}
+
     ${undisclosed.length ? `
-      <details class="undisc">
+      <details class="undisc"${p.undisclosedDominates ? ' open' : ''}>
         <summary>Neither document discusses — ${undisclosed.length}</summary>
-        <p class="h2sub">Dimensions Klausul compares that these two documents never mention.
-          <b>Not a change, and not a gap in your cover</b> — an Insurance Product Information
-          Document is two pages and does not discuss everything that can be compared.
-          Shown in full so you can check rather than take our word for it.</p>
+        <p class="h2sub">${p.undisclosedDominates
+          ? `These are the dimensions Klausul compares that neither document mentions, and on
+             this pair they are <b>most of them</b>. <b>Not a change, and not a gap in your
+             cover</b> — an Insurance Product Information Document is two pages and is not
+             where money lives. Open by default, because on this pair it is the finding.${
+             p.premiumSilent ? ' The premium is the one more, drawn on its own below.' : ''}`
+          : `Dimensions Klausul compares that these two documents never mention.
+             <b>Not a change, and not a gap in your cover</b> — an Insurance Product Information
+             Document is two pages and does not discuss everything that can be compared.
+             Shown in full so you can check rather than take our word for it.`}</p>
         ${undisclosed.map(r => rowHtml(r, p)).join('')}
       </details>` : ''}
 

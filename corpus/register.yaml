@@ -20,7 +20,7 @@ sources:
   language: en
   url: https://static.aviva.io/content/dam/aviva-public/ie/pdfs/motorcare-ipid.pdf
   route: open
-  probed: 2026-09-15
+  probed: '2026-09-16'
   findings:
   - EIGHT sections, not nine. "What is this type of insurance?" absent.
   - Order deviates from the Annex: restrictions AFTER territory; cancel BEFORE start/end.
@@ -29,6 +29,11 @@ sources:
   - Territory is a LIST plus a time-limited extension ("identical cover in the EU
     for up to 31 days").
   - Courtesy car is conditional on using the insurer's own repair network.
+  note: 'READ 2026-09-16: 8 sections, non-canonical order. Excess EUR300, conditional
+    EUR2,500, windscreen EUR225. EU cover 31 days.'
+  found_by: web search
+  local: corpus\pdf\IE\ie-aviva-motorcare.pdf
+  bytes: 56773
 - id: ie-axa
   market: IE
   insurer: AXA Insurance dac
@@ -46,13 +51,6 @@ sources:
 - id: ie-fbd
   market: IE
   insurer: FBD Insurance
-  product: Private motor
-  doc_type: ipid
-  language: en
-  route: probe_needed
-- id: ie-allianz
-  market: IE
-  insurer: Allianz p.l.c.
   product: Private motor
   doc_type: ipid
   language: en
@@ -100,13 +98,12 @@ sources:
   doc_type: ipid_in_bedingungen
   language: de
   url: https://www.wwk.de/medien/dokumente/bedingungen/kfz-versicherung_bedingungen.pdf
-  route: probe_needed
-  probed: 2026-09-15
-  note: 'Search surfaced this as a direct insurer-domain PDF containing an IPID ("1_KFZ_IPID_...").
-    Not yet opened — confirm the IPID is inside and record its page range before marking
-    open.
-
-    '
+  route: open
+  probed: '2026-09-16'
+  note: 'DOWNLOADED+READ 2026-09-16: 70-page pack, 300,540 chars. IPID is pages 1-2.
+    No Selbstbeteiligung figure in the IPID.'
+  local: corpus\pdf\DE\de-wwk.pdf
+  bytes: 1673881
 - id: de-mecklenburgische
   market: DE
   insurer: Mecklenburgische Versicherung
@@ -114,9 +111,12 @@ sources:
   doc_type: vertragsinformationen
   language: de
   url: https://www.mecklenburgische.de/pdfs/produkte/vertragsinformationen/kfz-versicherung_vertragsinformationen.pdf
-  route: probe_needed
-  probed: 2026-09-15
-  note: Insurer-domain PDF of contract information. Confirm an IPID section exists.
+  route: open
+  probed: '2026-09-16'
+  note: 'DOWNLOADED+READ 2026-09-16: 40-page pack, 309,149 chars. IPID is pages 3-4.
+    No Selbstbeteiligung figure in the IPID.'
+  local: corpus\pdf\DE\de-mecklenburgische.pdf
+  bytes: 915897
 - id: de-huk
   market: DE
   insurer: HUK-COBURG
@@ -166,20 +166,19 @@ sources:
   product: Kfz-Versicherung
   doc_type: ipid
   language: de
-  route: probe_needed
+  route: blocked
+  url: https://medien.devk.de/assets/content/download/produkte/fahrzeuge/devk-kfz-kundeninfo-42100-002-2024-01.pdf?versionId=1K2Vq_ndH.dxCqyQqmVFLnTQVg0vroJA
+  found_by: web search
+  found: '2026-09-16'
+  note: Kundeninformation pack - IPID likely embedded, like WWK and Mecklenburgische
+  probed: '2026-09-16'
+  blocked_reason: robots.txt disallows this path for our agent
 - id: de-r+v
   market: DE
   insurer: R+V Versicherung
   product: Kfz-Versicherung
   doc_type: ipid
   language: de
-  route: probe_needed
-- id: dk-tryg
-  market: DK
-  insurer: Tryg Forsikring
-  product: Bilforsikring
-  doc_type: ipid
-  language: da
   route: probe_needed
 - id: dk-topdanmark
   market: DK
@@ -245,6 +244,11 @@ sources:
   doc_type: ipid
   language: da
   route: probe_needed
+  url: https://www.thistedforsikring.dk/ipid/
+  candidate_kind: index
+  found_by: web search
+  found: '2026-09-16'
+  note: IPID index, private and commercial
 - id: eu-eiopa-template
   market: EU
   insurer: EIOPA
@@ -252,8 +256,8 @@ sources:
   doc_type: template
   language: multi
   url: https://www.eiopa.europa.eu/browse/regulation-and-policy/insurance-distribution-directive-idd/editable-template-insurance-product-information-document-ipid_en
-  route: open
-  probed: 2026-09-15
+  route: blocked
+  probed: '2026-09-16'
   findings:
   - 'EIOPA states manufacturers "are not obliged to use these specific files and may
     choose instead to develop their own IPIDs that meet the requirements of the IPID
@@ -263,3 +267,205 @@ sources:
     '
   - Templates exist in multiple EU languages; useful as a translation cross-check
     for app/vocab.py.
+  note: EIOPA template, HTML landing page - reference only, not a corpus document
+  blocked_reason: served text/html; charset=UTF-8, not a PDF — no document route
+- id: dk-howden
+  market: DK
+  insurer: Howden Agents Danmark
+  url: https://selvbetjening.howdenagents.dk/wp-content/uploads/2025/07/IPID-Autoforsikring.pdf
+  route: blocked
+  candidate_kind: direct_pdf
+  found_by: web search
+  found: '2026-09-16'
+  note: 'READ 2026-09-16: 9 sections, canonical order. NO excess figures — ''selvrisikoen,
+    som fremgaar af policen''.'
+  probed: '2026-09-16'
+  blocked_reason: robots.txt disallows this path for our agent
+- id: dk-vestjylland
+  market: DK
+  insurer: Vestjylland Forsikring
+  url: https://www.vestjylland.dk/hent-selv/produktinformation-ipid
+  route: probe_needed
+  candidate_kind: index
+  found_by: web search
+  found: '2026-09-16'
+  note: IPID index
+- id: dk-viking
+  market: DK
+  insurer: Viking Forsikringsagentur
+  url: https://www.vikingforsikring.dk/produktinformation-ipid/
+  route: probe_needed
+  candidate_kind: index
+  found_by: web search
+  found: '2026-09-16'
+  note: IPID index
+- id: dk-tryg
+  market: DK
+  insurer: Tryg
+  url: https://tryg.dk/kundeservice/betingelser-produktinformation
+  route: probe_needed
+  candidate_kind: index
+  found_by: web search
+  found: '2026-09-16'
+  note: terms + product information index
+- id: ie-islands
+  market: IE
+  insurer: Islands Insurance (NFU Mutual)
+  url: https://www.islands.insure/wp-content/uploads/2025/08/islands-private-car-comprehensive-ipid-2025-nfu-mutual.pdf
+  route: blocked
+  candidate_kind: direct_pdf
+  found_by: web search
+  found: '2026-09-16'
+  note: 'READ 2026-09-16: 9 sections, non-canonical order. NO excess figures — deferred
+    to policy documents.'
+  probed: '2026-09-16'
+  blocked_reason: robots.txt disallows this path for our agent
+- id: ie-aig
+  market: IE
+  insurer: AIG Ireland
+  url: https://www.aig.ie/content/dam/aig/emea/ireland/documents/policy-documents/2025/aig-direct-ipid-10-2025.pdf.coredownload.pdf
+  route: open
+  found_by: published index page
+  found: '2026-09-16'
+  note: direct car IPID, Oct 2025, found via the published policy-docs index
+  probed: '2026-09-16'
+  local: corpus\pdf\IE\ie-aig.pdf
+  bytes: 157212
+- id: ie-hiscox
+  market: IE
+  insurer: Hiscox Ireland
+  url: https://www.hiscox.ie/IPID-Ireland
+  route: probe_needed
+  candidate_kind: index
+  found_by: web search
+  found: '2026-09-16'
+  note: IPID index
+- id: ie-hedgehog
+  market: IE
+  insurer: Hedgehog Insurance
+  url: https://www.hedgehoginsurance.com/doc/thirdparty/prestige-0824-IPIDTPFT.pdf
+  route: blocked
+  candidate_kind: direct_pdf
+  found_by: web search
+  found: '2026-09-16'
+  note: third-party fire & theft — partial cover
+  probed: '2026-09-16'
+  blocked_reason: robots.txt disallows this path for our agent
+- id: ie-allianz
+  market: IE
+  insurer: Allianz Assistance Ireland
+  url: https://www.allianz-assistance.ie/content/dam/onemarketing/awp/allianz-assistance-ie/policy-docs/Motor-Breakdown-IPID-Ireland-May2019.pdf
+  route: blocked
+  candidate_kind: direct_pdf
+  found_by: web search
+  found: '2026-09-16'
+  note: breakdown assistance only, not full motor
+  probed: '2026-09-16'
+  blocked_reason: robots.txt disallows this path for our agent
+- id: ie-aig-boxclever
+  market: IE
+  insurer: AIG Ireland BoxClever (telematics)
+  route: open
+  probed: '2026-09-16'
+  note: telematics motor variant — useful as a different product shape
+  found_by: web search
+  url: https://www.aig.ie/content/dam/aig/emea/ireland/documents/policy-documents/2025/aig-boxclever-telematics-ipid-10-2025.pdf.coredownload.pdf
+  local: corpus\pdf\IE\ie-aig-boxclever.pdf
+  bytes: 164032
+- id: dk-tryg-current
+  market: DK
+  insurer: Tryg (current)
+  route: open
+  probed: '2026-09-16'
+  note: 'DOWNLOADED+READ 2026-09-16: 2 pages, standalone IPID, ''Gaeldende fra 21.
+    marts 2024''.'
+  found_by: published index page
+  url: https://tryg.dk/dokumenter/privat/produktinformation-bil.pdf
+  local: corpus\pdf\DK\dk-tryg-current.pdf
+  bytes: 81951
+- id: dk-tryg-2022
+  market: DK
+  insurer: Tryg (Apr 2022 - Mar 2024)
+  route: open
+  probed: '2026-09-16'
+  note: 'DOWNLOADED+READ 2026-09-16: 2 pages, standalone IPID, ''Gaeldende fra 29.
+    april 2022''. PAIRS WITH dk-tryg-current as a real renewal case.'
+  found_by: web search
+  url: https://tryg.dk/dokumenter/privat/produktinformation-bilforsikring-april-2022.pdf
+  local: corpus\pdf\DK\dk-tryg-2022.pdf
+  bytes: 94302
+- id: dk-tryg-2018d
+  market: DK
+  insurer: Tryg (Dec 2018)
+  route: open
+  probed: '2026-09-16'
+  note: archived version
+  found_by: web search
+  url: https://tryg.dk/dokumenter/privat/produktinformation-bil-december2018.pdf
+  local: corpus\pdf\DK\dk-tryg-2018d.pdf
+  bytes: 84280
+- id: dk-tryg-2018f
+  market: DK
+  insurer: Tryg (Feb 2018)
+  route: open
+  probed: '2026-09-16'
+  note: archived version
+  found_by: web search
+  url: https://tryg.dk/dokumenter/privat/produktinformation-bilforsikring-februar2018.pdf
+  local: corpus\pdf\DK\dk-tryg-2018f.pdf
+  bytes: 85040
+- id: de-provinzial
+  market: DE
+  insurer: Provinzial
+  url: https://www.provinzial.de/export/sites/pvn/_resources/download/privat_versicherungen/581-17-PIB_Kfz-IPID_Stand-9.2018.pdf
+  route: open
+  found_by: web search
+  found: '2026-09-16'
+  note: standalone Kfz IPID (2018) - filename says PIB_Kfz-IPID
+  probed: '2026-09-16'
+  local: corpus\pdf\DE\de-provinzial.pdf
+  bytes: 64723
+- id: de-aig
+  market: DE
+  insurer: AIG Deutschland
+  url: https://www.aig.de/content/dam/aig/emea/germany/documents/brochure/ipid-kfz.pdf.coredownload.pdf
+  route: open
+  found_by: web search
+  found: '2026-09-16'
+  note: standalone Kfz IPID - same group as ie-aig, useful as a cross-market pair
+  probed: '2026-09-16'
+  local: corpus\pdf\DE\de-aig.pdf
+  bytes: 57576
+- id: de-conceptif
+  market: DE
+  insurer: Conceptif
+  url: https://www.conceptif.de/downloads/dokumente/bedingungen/IPID_KFZ_WUE.PDF
+  route: open
+  found_by: web search
+  found: '2026-09-16'
+  note: standalone Kfz IPID
+  probed: '2026-09-16'
+  local: corpus\pdf\DE\de-conceptif.pdf
+  bytes: 100834
+- id: de-wakam
+  market: DE
+  insurer: WAKAM (via Agent22)
+  url: https://portal.agent22.eu/pdf/WAKAM_IPID.pdf
+  route: open
+  found_by: web search
+  found: '2026-09-16'
+  note: Kfz-Haftpflicht IPID - liability only, partial product
+  probed: '2026-09-16'
+  local: corpus\pdf\DE\de-wakam.pdf
+  bytes: 412024
+- id: de-maklertarif
+  market: DE
+  insurer: Maklertarif
+  url: https://www.maklertarif.de/assets/2021/02/IPID_KfZ.pdf
+  route: open
+  found_by: web search
+  found: '2026-09-16'
+  note: standalone Kfz IPID (2021)
+  probed: '2026-09-16'
+  local: corpus\pdf\DE\de-maklertarif.pdf
+  bytes: 112339
