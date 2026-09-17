@@ -196,16 +196,22 @@ def find_mention(text: str | None, path: str) -> Mention | None:
     return None
 
 
-def _demote(f: Field, m: Mention, label: str, doc: str | None) -> None:
+def _sentence_case(label: str) -> str:
+    """Lower only the first letter. `label.lower()` turned "Roadside assistance, rest of
+    Europe" into "... rest of europe" on the page — a proper noun, flattened."""
+    return label[:1].lower() + label[1:] if label else label
+
+
+def _demote(f: Field, m: Mention, label: str) -> None:
+    doc = f.source_document
     f.status = Status.AMBIGUOUS
     f.confidence = min(f.confidence, 0.35)
     f.source_text = m.line
     f.source_page = m.page
-    if doc:
-        f.source_document = doc
-    f.note = (f"this document does discuss {label.lower()} — the line below mentions "
-              f"«{m.term}» — but no value for it was established, so it is "
-              f"unsettled rather than absent")
+    f.source_document = doc
+    f.note = (f"this document does discuss {_sentence_case(label)} — the line below "
+              f"mentions «{m.term}» — but no value for it was established, so "
+              f"it is unsettled rather than absent")
 
 
 def verify_absences(*policies: Policy) -> list[dict]:
@@ -223,12 +229,11 @@ def verify_absences(*policies: Policy) -> list[dict]:
             m = find_mention(p.source_text, dim.path)
             if m is None:
                 continue
-            doc = p.document.product_name.source_document or None
-            _demote(f, m, dim.label, doc)
+            _demote(f, m, dim.label)
             out.append({
                 "field": dim.path,
                 "label": dim.label,
-                "document": doc,
+                "document": f.source_document,
                 "term": m.term,
                 "page": m.page,
                 "line": m.line,
@@ -237,10 +242,15 @@ def verify_absences(*policies: Policy) -> list[dict]:
 
 
 def absence_notes(records: list[dict]) -> list[str]:
-    """Plain sentences for the uncertainties list the reader actually sees."""
+    """Plain sentences for the uncertainties list the reader actually sees.
+
+    Both documents usually recover the same field, so the note has to say WHICH one.
+    Written as "this document" it produced the same sentence twice with nothing to tell
+    them apart, which reads as a duplicate rather than as two findings.
+    """
     return [
-        f"{r['label']} is not absent from this document — it is discussed on "
-        f"page {r['page']} («{r['term']}») without a value being stated: "
-        f"»{(r['line'] or '')[:110]}«"
+        f"{r['label']} is not absent from {r['document'] or 'this document'} — it is "
+        f"discussed on page {r['page']} («{r['term']}») without a value being "
+        f"stated: »{(r['line'] or '')[:110]}«"
         for r in records
     ]
