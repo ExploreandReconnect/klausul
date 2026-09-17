@@ -14,7 +14,10 @@ Built for the **Nebius x NVIDIA Global AI Hackathon** · track: Best Apps and Ag
 runs on **Nebius Token Factory** using **NVIDIA Nemotron 3**.
 
 - Live: <https://exploreandreconnect.github.io/klausul/>
-- API: <https://klausul-api.onrender.com/health>
+- API health (self-reports both Nemotron model IDs): <https://klausul-api.onrender.com/health>
+- API docs: <https://klausul-api.onrender.com/docs>
+- Models, sizes, and where Token Factory accelerated the workflow:
+  [Nebius Token Factory and NVIDIA Nemotron](#nebius-token-factory-and-nvidia-nemotron)
 
 ---
 
@@ -22,10 +25,10 @@ runs on **Nebius Token Factory** using **NVIDIA Nemotron 3**.
 
 This began as a tool for comparing insurance renewals. Then we collected the documents.
 
-**Fourteen published Insurance Product Information Documents, from four countries. One of
-them states an excess amount.** The Danish ones contain no money figures at all. A real
-Tryg renewal pair, 2022 against 2024, is 94% identical text and has nothing to compare:
-no premium, no excess, no limits.
+**Fourteen published Insurance Product Information Documents, from Denmark, Germany and
+Ireland. One of them states an excess amount.** The Danish ones contain no money figures
+at all. A real Tryg renewal pair, 2022 against 2024, is 94% identical text and has nothing
+to compare: no premium, no excess, no limits.
 
 So the original demo — a Danish renewal where a theft excess moved from €300 to €500 and
 a replacement-car cap was halved — described a document format that does not exist. It
@@ -37,6 +40,45 @@ describes the product; your premium and your excess live on the policy schedule,
 a different document, and nobody compares it.
 
 Everything below follows from that.
+
+---
+
+## Nebius Token Factory and NVIDIA Nemotron
+
+Two Nemotron variants, chosen for two different jobs. The live service self-reports both at
+[`/health`](https://klausul-api.onrender.com/health).
+
+| Stage | Model | Why this size |
+|---|---|---|
+| Extraction | `nvidia/nemotron-3-super-120b-a12b` | Multilingual structured extraction under a strict schema: Danish, German and Irish-English documents into one canonical model, with a verbatim untranslated quote and a page number on every value. German IPIDs arrive embedded in 40-70 page policy packs (~300,000 characters), so real cross-lingual competence and long context were required. The MoE active-parameter count kept latency acceptable: two 2-page documents extract concurrently in 57-145 s. |
+| Explanation | `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B` | Called **only after** a difference has been confirmed by deterministic code, so the job is short, bounded prose about one confirmed finding. A 120B model would waste latency and tokens on that. Nano runs 5-16 of these concurrently, 36-60 s total. |
+
+Splitting by job rather than using one model for everything is the same principle the whole
+product runs on: use the smallest thing that can do the step correctly.
+
+### Where Token Factory accelerated the workflow
+
+1. **The OpenAI-compatible endpoint.** One base-URL change and an existing client worked --
+   zero integration work. That sounds small and is not: the interesting problems got the week
+   instead of the plumbing. It also keeps this project portable, which is the right thing for
+   an open-infrastructure platform to offer.
+2. **Both model sizes behind one endpoint and one key.** The architecture calls a 120B model
+   for extraction and a 30B model for explanation inside the same request cycle. One
+   credential and one client made that split a design decision rather than an infrastructure
+   project. Two providers and it would have been one model doing both jobs badly.
+3. **Throughput under concurrency.** The pipeline extracts two documents concurrently, then
+   fans out 5-16 explanation calls at a concurrency of 4, with no rate-limit gymnastics.
+   End-to-end latency for a full two-document comparison is roughly 100-180 s.
+
+### The prompt line that mattered most
+
+`detailed thinking off` as the first line of the system prompt. Without it, Super spent its
+token budget deliberating and returned truncated JSON that never closed. With it, output was
+clean and roughly 3x faster. It was the single highest-leverage line in the project and it was
+found by accident -- which is why it is written down here.
+
+Extraction prompts are in the repo. Nothing about the method is hidden: the point of using an
+open model is being able to say *here is exactly what was sent and what came back.*
 
 ---
 
