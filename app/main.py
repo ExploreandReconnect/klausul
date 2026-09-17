@@ -23,6 +23,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from .absence import absence_notes, verify_absences
 from .compare import compare
 from .explain import actions, explain_one
 from .extract import EmptyExtraction, extract
@@ -188,6 +189,15 @@ async def compare_endpoint(
             # read_pdf raises this for a PDF with no text layer
             raise HTTPException(422, str(e)) from e
         timings["extract"] = time.perf_counter() - t
+
+    # Between extraction and comparison, and deliberately before it: an absence the
+    # document's own text contradicts must never reach compare(), because compare() will
+    # faithfully turn it into "stated there, absent here" — a finding.
+    t = time.perf_counter()
+    recovered = verify_absences(a, b)
+    if recovered:
+        a.uncertainties = list(a.uncertainties) + absence_notes(recovered)
+    timings["verify"] = time.perf_counter() - t
 
     t = time.perf_counter()
     result = compare(a, b)

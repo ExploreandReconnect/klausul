@@ -79,8 +79,53 @@ def _walk(p: Policy):
 ASSERTED = (Status.EXPLICIT, Status.INFERRED)
 
 
+"""NARROWED, AFTER MEASUREMENT.
+
+The first version demoted every field sharing a quote. Run over two real pairs it fired
+six times and was right once. The five wrong ones were all one shape — a single clause
+that genuinely carries two related facts:
+
+    "Fire, theft or attempted theft - loss of or damage to your car"
+        -> coverage.fire AND coverage.theft. Both true. One sentence, two perils.
+    "Identical cover in the EU for up to 31 days"
+        -> coverage.foreign_travel AND foreign_use_limitations. The benefit and its scope.
+    "Selskab: Tryg Forsikring A/S FT-nr.: 53070 Danmark"
+        -> document.insurer AND document.country. Both stated, right there.
+
+vocab.match_all says this outright: "One clause routinely carries a benefit AND a scope
+... which is why this returns a set rather than a winner." The validator contradicted the
+vocabulary layer sitting next to it, and cost us the Aviva 31-day limit.
+
+So the rule is now: a quote shared WITHIN a family is legitimate double duty and is left
+alone; a quote stretched ACROSS families still settles nothing.
+
+The case this was built for — the Tryg territory clause cited for both `territories` and
+roadside assistance — falls inside the territory family, so it is no longer caught here.
+It does not need to be. The damage was never the shared quote; it was the unverified
+ABSENCE on the other document, which app/absence.py now checks directly and which was the
+real defect all along."""
+
+
+def _family(path: str) -> str:
+    """The subject a path belongs to. Two paths in one family may share a sentence."""
+    if path.startswith("document."):
+        return "document"
+    if path.startswith("price.") or path in ("duration", "cancellation"):
+        return "contract"
+    if path in ("territories", "foreign_use_limitations", "coverage.foreign_travel"):
+        return "territory"
+    if path.startswith("coverage."):
+        return "perils"            # one clause listing several perils is normal drafting
+    # A cover, its limit and its excess are three readings of one promise, and IPIDs
+    # routinely state all three in one line: "replacement vehicle for up to 14 days".
+    for group in ("coverage_limits.", "excesses."):
+        if path.startswith(group):
+            return "cover:" + path[len(group):].split("_")[0]
+    return path
+
+
 def shared_evidence(policy: Policy) -> list[dict]:
-    """Find quotes doing double duty, demote every field that leans on them.
+    """Find quotes stretched across unrelated subjects; demote the fields that lean on them.
 
     Mutates the policy. Returns one record per conflict so the caller can show the
     reader what happened rather than quietly changing an answer underneath them.
@@ -99,6 +144,8 @@ def shared_evidence(policy: Policy) -> list[dict]:
         paths = sorted({p for p, _ in entries})
         if len(paths) < 2:
             continue
+        if len({_family(p) for p in paths}) < 2:
+            continue                       # one subject, one sentence — normal drafting
         quote = entries[0][1].source_text or ""
         for path, f in entries:
             f.status = Status.AMBIGUOUS

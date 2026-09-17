@@ -228,6 +228,7 @@ def extract(path: str | Path, *, model: str = MODEL_EXTRACT, market: str | None 
 
     stats: dict = {}
     policy = to_policy(complete_json(SYSTEM, prompt, model=model, stats=stats), path.name)
+    policy.source_text = text          # so an absence can be checked against the document
     if evidence_count(policy) > 0:
         return _checked(policy)
 
@@ -235,6 +236,7 @@ def extract(path: str | Path, *, model: str = MODEL_EXTRACT, market: str | None 
     # temperature 0, and an empty answer is usually a bad draw rather than a bad document.
     retry: dict = {}
     policy = to_policy(complete_json(SYSTEM, prompt, model=model, stats=retry), path.name)
+    policy.source_text = text
     if evidence_count(policy) > 0:
         return _checked(policy)
 

@@ -78,6 +78,12 @@ class Policy(BaseModel):
     no_claims: Field = Field()
     uncertainties: list[str] = F(default_factory=list)
 
+    # The document's own text, kept so that an ABSENCE can be checked against it.
+    # `not_found` is the only answer in this schema that asserts a negative, and a
+    # negative from one model pass is an unverified claim — see app/absence.py.
+    # Excluded from dumps: it is working material, not part of the answer.
+    source_text: str | None = F(default=None, exclude=True, repr=False)
+
     def get(self, path: str) -> Field:
         """Dotted lookup: 'excesses.theft', 'price.annual_premium', 'coverage.roadside_assistance'."""
         head, _, tail = path.partition(".")
